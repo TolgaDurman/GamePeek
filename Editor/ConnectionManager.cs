@@ -50,6 +50,7 @@ namespace UniPeek
         public int Quality        { get; set; } = 75;
         public int FpsCap         { get; set; } = 30;
         public int MaxBitrateKbps { get; set; } = UniPeekConstants.DefaultWebRtcMaxBitrateKbps;
+        public string WebRtcStunUrl { get; set; } = string.Empty;
     }
 
     // ── Manager ───────────────────────────────────────────────────────────────
@@ -423,7 +424,16 @@ namespace UniPeek
             {
                 _statsTimer = 0f;
                 if (_capture != null && _encoder != null)
+                {
+#if UNITY_WEBRTC
+                    float captureFps = WebRtcActive && _webRtcStreamer != null
+                        ? _webRtcStreamer.SmoothedCaptureFps
+                        : _capture.SmoothedFps;
+                    StatsUpdated?.Invoke(captureFps, _encoder.LastEncodeMs);
+#else
                     StatsUpdated?.Invoke(_capture.SmoothedFps, _encoder.LastEncodeMs);
+#endif
+                }
             }
 
             // RTT ping every 30 s (only while connected)
@@ -722,17 +732,22 @@ namespace UniPeek
             // Stop JPEG pipeline immediately — WebRTC will carry video.
             if (_capture != null) _capture.UseWebRTC = true;
 
-            _webRtcStreamer = new WebRTCStreamer(Config.Width, Config.Height, Config.FpsCap, Config.MaxBitrateKbps);
+            _webRtcStreamer = new WebRTCStreamer(Config.Width, Config.Height, Config.FpsCap,
+                Config.MaxBitrateKbps, Config.WebRtcStunUrl);
+            var streamer = _webRtcStreamer;
+            var activeSessionId = sessionId;
 
             _webRtcStreamer.OfferReady += sdp =>
             {
+                if (_webRtcStreamer != streamer || _webRtcSessionId != activeSessionId) return;
                 var payload = UnityEngine.JsonUtility.ToJson(new WsOfferMsg { type = "offer", sdp = sdp });
-                _wsServer?.SendToSession(_webRtcSessionId, payload);
+                _wsServer?.SendToSession(activeSessionId, payload);
                 UniPeekConstants.Log("[WebRTC] Offer sent to Flutter.");
             };
 
             _webRtcStreamer.IceCandidateReady += (candidate, sdpMid, sdpMLineIndex) =>
             {
+                if (_webRtcStreamer != streamer || _webRtcSessionId != activeSessionId) return;
                 var payload = UnityEngine.JsonUtility.ToJson(new WsCandidateMsg
                 {
                     type           = "candidate",
@@ -740,24 +755,30 @@ namespace UniPeek
                     sdpMid         = sdpMid,
                     sdpMLineIndex  = sdpMLineIndex,
                 });
-                _wsServer?.SendToSession(_webRtcSessionId, payload);
+                _wsServer?.SendToSession(activeSessionId, payload);
             };
 
             _webRtcStreamer.Connected += () => Enqueue(() =>
             {
+                if (_webRtcStreamer != streamer || _webRtcSessionId != activeSessionId) return;
                 WebRtcActive = true;
                 UniPeekConstants.Log("[WebRTC] P2P connection established — video flowing.");
             });
 
             _webRtcStreamer.Disconnected += () => Enqueue(() =>
             {
+                if (_webRtcStreamer != streamer || _webRtcSessionId != activeSessionId) return;
                 UniPeekConstants.Log("[WebRTC] P2P connection lost, reverting to JPEG.");
                 TearDownWebRTC();
                 // Resume JPEG pipeline
                 if (_capture != null) _capture.UseWebRTC = false;
             });
 
-            _webRtcStreamer.DataChannelMessage += json => Enqueue(() => HandleInputJson(json));
+            _webRtcStreamer.DataChannelMessage += json => Enqueue(() =>
+            {
+                if (_webRtcStreamer != streamer || _webRtcSessionId != activeSessionId) return;
+                HandleInputJson(json);
+            });
 
             try
             {

@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Text;
 using Unity.EditorCoroutines.Editor;
@@ -16,7 +17,8 @@ namespace UniPeek
     /// Manages a single WebRTC peer connection that streams the Unity Game View
     /// to the Flutter companion app.
     /// <para>
-    /// <b>Video:</b> uses <c>Camera.CaptureStreamTrack</c> — requires play mode.
+    /// <b>Video:</b> captures the composited Game View at end-of-frame into a
+    /// <see cref="RenderTexture"/> consumed by <see cref="VideoStreamTrack"/>.
     /// </para>
     /// <para>
     /// <b>Input:</b> received via an <see cref="RTCDataChannel"/> named "input"
@@ -51,9 +53,16 @@ namespace UniPeek
         // ── Configuration ─────────────────────────────────────────────────────
         private readonly int _width;
         private readonly int _height;
+        private const double NegotiationTimeoutSeconds = 12.0;
+        private const double IceDisconnectedGraceSeconds = 3.0;
+        private const int MinFpsCap = 1;
+        private const int MaxFpsCap = 120;
+        private const int MinBitrateKbps = 100;
+        private const int MaxBitrateKbps = 50_000;
         private double _captureInterval; // seconds between frames = 1 / fpsCap
         private double _lastCaptureTime;
         private int _maxBitrateKbps;
+        private readonly string _stunUrl;
 
         // ── WebRTC objects ────────────────────────────────────────────────────
         private RTCPeerConnection _pc;
@@ -61,8 +70,18 @@ namespace UniPeek
         private AudioStreamTrack  _audioTrack;
         private MediaStream       _mediaStream;
         private RTCDataChannel    _dataChannel;
+        private readonly List<RTCDataChannel> _remoteDataChannels = new();
 
         private bool _disposed;
+        private bool _mainThreadQueueHooked;
+        private int _iceDisconnectGeneration;
+        private readonly ConcurrentQueue<Action> _mainThreadActions = new();
+
+        private EditorCoroutine _offerCoroutine;
+        private EditorCoroutine _negotiationTimeoutCoroutine;
+        private EditorCoroutine _webRtcUpdateCoroutine;
+        private EditorCoroutine _cameraLoopCoroutine;
+        private EditorCoroutine _iceDisconnectedGraceCoroutine;
 
         // ICE candidate buffer — candidates may arrive before the SDP answer is
         // applied (SetRemoteDescription yields 1+ editor ticks).  Mirror what the
@@ -75,6 +94,9 @@ namespace UniPeek
 
         // Play Mode overlay capture (same CaptureHelper as JPEG pipeline)
         private CaptureHelper _captureHelper;
+        private double _fpsWindowStart;
+        private int _fpsWindowCount;
+        private float _smoothedCaptureFps;
 
         // ── Constructor ───────────────────────────────────────────────────────
 
@@ -83,22 +105,27 @@ namespace UniPeek
         /// <param name="fpsCap">Maximum capture rate (frames/second). Defaults to 30.</param>
         /// <param name="maxBitrateKbps">Maximum video bitrate in kbps. Defaults to 10 000 (10 Mbps).</param>
         public WebRTCStreamer(int width = 1280, int height = 720, int fpsCap = 30,
-                              int maxBitrateKbps = UniPeekConstants.DefaultWebRtcMaxBitrateKbps)
+                              int maxBitrateKbps = UniPeekConstants.DefaultWebRtcMaxBitrateKbps,
+                              string stunUrl = "")
         {
             _width           = width;
             _height          = height;
-            _captureInterval = fpsCap > 0 ? 1.0 / fpsCap : 1.0 / 30.0;
-            _maxBitrateKbps  = maxBitrateKbps;
+            _captureInterval = FpsCapToInterval(fpsCap);
+            _maxBitrateKbps  = ClampBitrate(maxBitrateKbps);
+            _stunUrl         = string.IsNullOrWhiteSpace(stunUrl) ? string.Empty : stunUrl.Trim();
         }
+
+        /// <summary>Smoothed WebRTC capture rate displayed in the Editor window.</summary>
+        public float SmoothedCaptureFps => _smoothedCaptureFps;
 
         /// <summary>Updates the FPS cap. Takes effect on the next capture.</summary>
         public void SetFpsCap(int fpsCap)
-            => _captureInterval = fpsCap > 0 ? 1.0 / fpsCap : 1.0 / 30.0;
+            => _captureInterval = FpsCapToInterval(fpsCap);
 
         /// <summary>Updates the maximum video bitrate and re-applies it to any active senders.</summary>
         public void SetMaxBitrate(int kbps)
         {
-            _maxBitrateKbps = kbps;
+            _maxBitrateKbps = ClampBitrate(kbps);
             ApplyBitrateSettings();
         }
 
@@ -112,10 +139,16 @@ namespace UniPeek
         public void StartNegotiation()
         {
             if (_pc != null || _disposed) return;
+            HookMainThreadQueue();
+
             var config = new RTCConfiguration
             {
-                iceServers = Array.Empty<RTCIceServer>(),
+                iceServers = string.IsNullOrEmpty(_stunUrl)
+                    ? Array.Empty<RTCIceServer>()
+                    : new[] { new RTCIceServer { urls = new[] { _stunUrl } } },
             };
+            if (!string.IsNullOrEmpty(_stunUrl))
+                UniPeekConstants.Log($"[WebRTC] Using STUN server: {_stunUrl}");
 
             _pc = new RTCPeerConnection(ref config);
             _pc.OnIceCandidate          = OnIceCandidate;
@@ -161,15 +194,22 @@ namespace UniPeek
             }
 
             // ── Data channel (input messages from Flutter) ────────────────────
+            ApplyBitrateSettings();
+
             var dcInit = new RTCDataChannelInit { ordered = true };
             _dataChannel          = _pc.CreateDataChannel("input", dcInit);
             _dataChannel.OnMessage = bytes =>
                 DataChannelMessage?.Invoke(Encoding.UTF8.GetString(bytes));
 
             // ── Start offer creation and drive WebRTC update loop ─────────────
-            EditorCoroutineUtility.StartCoroutineOwnerless(CreateOfferCoroutine());
-            EditorCoroutineUtility.StartCoroutineOwnerless(WebRtcUpdateWrapper());
-            EditorCoroutineUtility.StartCoroutineOwnerless(CameraLoop());
+            _fpsWindowStart = EditorApplication.timeSinceStartup;
+            _fpsWindowCount = 0;
+            _smoothedCaptureFps = 0f;
+
+            _offerCoroutine = EditorCoroutineUtility.StartCoroutineOwnerless(CreateOfferCoroutine());
+            _negotiationTimeoutCoroutine = EditorCoroutineUtility.StartCoroutineOwnerless(NegotiationTimeoutCoroutine());
+            _webRtcUpdateCoroutine = EditorCoroutineUtility.StartCoroutineOwnerless(WebRtcUpdateWrapper());
+            _cameraLoopCoroutine = EditorCoroutineUtility.StartCoroutineOwnerless(CameraLoop());
         }
 
         /// <summary>
@@ -178,8 +218,12 @@ namespace UniPeek
         /// </summary>
         public void SetRemoteAnswer(string sdp)
         {
-            if (_pc == null || _disposed) return;
-            EditorCoroutineUtility.StartCoroutineOwnerless(SetRemoteDescriptionCoroutine(sdp));
+            if (string.IsNullOrWhiteSpace(sdp)) return;
+            EnqueueMainThread(() =>
+            {
+                if (_pc == null || _disposed) return;
+                EditorCoroutineUtility.StartCoroutineOwnerless(SetRemoteDescriptionCoroutine(sdp));
+            });
         }
 
         /// <summary>
@@ -188,20 +232,24 @@ namespace UniPeek
         /// </summary>
         public void AddIceCandidate(string candidate, string sdpMid, int sdpMLineIndex)
         {
-            if (_pc == null || _disposed) return;
-            var c = new RTCIceCandidate(new RTCIceCandidateInit
+            if (string.IsNullOrWhiteSpace(candidate)) return;
+            EnqueueMainThread(() =>
             {
-                candidate     = candidate,
-                sdpMid        = sdpMid,
-                sdpMLineIndex = sdpMLineIndex,
-            });
-            // Flutter may send candidates before SetRemoteDescriptionCoroutine finishes
-            // (it yields at least one editor tick). Buffer them and drain after the
+                if (_pc == null || _disposed) return;
+                var c = new RTCIceCandidate(new RTCIceCandidateInit
+                {
+                    candidate     = candidate,
+                    sdpMid        = sdpMid,
+                    sdpMLineIndex = sdpMLineIndex,
+                });
+                // Flutter may send candidates before SetRemoteDescriptionCoroutine finishes
+                // (it yields at least one editor tick). Buffer them and drain after the
             // answer is applied — same pattern as Flutter's _pendingCandidates list.
-            if (!_remoteDescriptionSet)
-                _pendingCandidates.Add(c);
-            else
-                _pc.AddIceCandidate(c);
+                if (!_remoteDescriptionSet)
+                    _pendingCandidates.Add(c);
+                else
+                    _pc.AddIceCandidate(c);
+            });
         }
 
         /// <summary>
@@ -215,9 +263,14 @@ namespace UniPeek
         {
             if (_disposed) return;
             _disposed = true;
+            UnhookMainThreadQueue();
 
             _dataChannel?.Dispose();
             _dataChannel = null;
+
+            foreach (var channel in _remoteDataChannels)
+                channel?.Dispose();
+            _remoteDataChannels.Clear();
 
             _audioTrack?.Dispose();
             _audioTrack = null;
@@ -238,7 +291,13 @@ namespace UniPeek
             // EditorApplication.update snapshot.
 
             _pendingCandidates.Clear();
+            while (_mainThreadActions.TryDequeue(out _)) { }
             _remoteDescriptionSet = false;
+            _offerCoroutine = null;
+            _negotiationTimeoutCoroutine = null;
+            _webRtcUpdateCoroutine = null;
+            _cameraLoopCoroutine = null;
+            _iceDisconnectedGraceCoroutine = null;
 
             if (_captureHelper != null)
             {
@@ -255,6 +314,44 @@ namespace UniPeek
 
             UniPeekConstants.Log("[WebRTC] Streamer disposed.");
         }
+
+        private void HookMainThreadQueue()
+        {
+            if (_mainThreadQueueHooked) return;
+            EditorApplication.update += DrainMainThreadQueue;
+            _mainThreadQueueHooked = true;
+        }
+
+        private void UnhookMainThreadQueue()
+        {
+            if (!_mainThreadQueueHooked) return;
+            EditorApplication.update -= DrainMainThreadQueue;
+            _mainThreadQueueHooked = false;
+        }
+
+        private void EnqueueMainThread(Action action)
+        {
+            if (_disposed) return;
+            _mainThreadActions.Enqueue(action);
+        }
+
+        private void DrainMainThreadQueue()
+        {
+            while (!_disposed && _mainThreadActions.TryDequeue(out var action))
+            {
+                try { action(); }
+                catch (Exception ex) { UniPeekConstants.LogError($"[WebRTC] Main-thread action failed: {ex}"); }
+            }
+        }
+
+        private static double FpsCapToInterval(int fpsCap)
+        {
+            int clamped = Mathf.Clamp(fpsCap, MinFpsCap, MaxFpsCap);
+            return 1.0 / clamped;
+        }
+
+        private static int ClampBitrate(int kbps)
+            => Mathf.Clamp(kbps, MinBitrateKbps, MaxBitrateKbps);
 
         // ── Coroutines ────────────────────────────────────────────────────────
 
@@ -338,7 +435,19 @@ namespace UniPeek
                     Graphics.Blit(tex, _renderTexture);
                 }
             }
+            UpdateFpsStats();
             UnityEngine.Object.DestroyImmediate(tex);
+        }
+
+        private void UpdateFpsStats()
+        {
+            _fpsWindowCount++;
+            double elapsed = EditorApplication.timeSinceStartup - _fpsWindowStart;
+            if (elapsed < 1.0) return;
+
+            _smoothedCaptureFps = (float)(_fpsWindowCount / elapsed);
+            _fpsWindowCount = 0;
+            _fpsWindowStart = EditorApplication.timeSinceStartup;
         }
 
         // VideoStreamTrack's default VerticalFlipCopy runs outside a camera context
@@ -362,6 +471,34 @@ namespace UniPeek
             }
         }
 
+        private IEnumerator NegotiationTimeoutCoroutine()
+        {
+            double startTime = EditorApplication.timeSinceStartup;
+            while (!_disposed && !_remoteDescriptionSet &&
+                   EditorApplication.timeSinceStartup - startTime < NegotiationTimeoutSeconds)
+            {
+                yield return null;
+            }
+
+            if (_disposed || _remoteDescriptionSet) yield break;
+
+            NotifyDisconnected($"Negotiation timed out after {NegotiationTimeoutSeconds:0.#} seconds waiting for remote answer.");
+        }
+
+        private IEnumerator IceDisconnectedGraceCoroutine(int generation)
+        {
+            double startTime = EditorApplication.timeSinceStartup;
+            while (!_disposed && generation == _iceDisconnectGeneration &&
+                   EditorApplication.timeSinceStartup - startTime < IceDisconnectedGraceSeconds)
+            {
+                yield return null;
+            }
+
+            if (_disposed || generation != _iceDisconnectGeneration) yield break;
+
+            NotifyDisconnected($"ICE remained disconnected for {IceDisconnectedGraceSeconds:0.#} seconds.");
+        }
+
         private IEnumerator CreateOfferCoroutine()
         {
             var offerOp = _pc.CreateOffer();
@@ -372,6 +509,7 @@ namespace UniPeek
                 UniPeekConstants.LogError($"[WebRTC] CreateOffer error: {offerOp.Error.message}");
                 yield break;
             }
+            if (_disposed || _pc == null) yield break;
 
             var desc       = offerOp.Desc;
             var setLocalOp = _pc.SetLocalDescription(ref desc);
@@ -382,6 +520,7 @@ namespace UniPeek
                 UniPeekConstants.LogError($"[WebRTC] SetLocalDescription error: {setLocalOp.Error.message}");
                 yield break;
             }
+            if (_disposed || _pc == null) yield break;
 
             UniPeekConstants.Log("[WebRTC] Offer created, sending to Flutter.");
             OfferReady?.Invoke(offerOp.Desc.sdp);
@@ -392,6 +531,7 @@ namespace UniPeek
             var desc = new RTCSessionDescription { type = RTCSdpType.Answer, sdp = sdp };
             var op   = _pc.SetRemoteDescription(ref desc);
             yield return op;
+            if (_disposed || _pc == null) yield break;
 
             if (op.IsError)
             {
@@ -401,6 +541,7 @@ namespace UniPeek
             {
                 UniPeekConstants.Log("[WebRTC] Remote answer accepted.");
                 _remoteDescriptionSet = true;
+                ApplyBitrateSettings();
                 // Drain ICE candidates that arrived before the answer was processed.
                 foreach (var c in _pendingCandidates)
                     _pc?.AddIceCandidate(c);
@@ -412,6 +553,7 @@ namespace UniPeek
 
         private void OnIceCandidate(RTCIceCandidate candidate)
         {
+            if (_disposed) return;
             if (candidate?.Candidate == null) return;
             IceCandidateReady?.Invoke(
                 candidate.Candidate,
@@ -421,21 +563,35 @@ namespace UniPeek
 
         private void OnIceConnectionChange(RTCIceConnectionState state)
         {
+            if (_disposed) return;
             UniPeekConstants.Log($"[WebRTC] ICE state → {state}");
             switch (state)
             {
                 case RTCIceConnectionState.Connected:
                 case RTCIceConnectionState.Completed:
+                    _iceDisconnectGeneration++;
                     ApplyBitrateSettings();
                     Connected?.Invoke();
                     break;
 
                 case RTCIceConnectionState.Disconnected:
+                    _iceDisconnectedGraceCoroutine = EditorCoroutineUtility.StartCoroutineOwnerless(
+                            IceDisconnectedGraceCoroutine(++_iceDisconnectGeneration));
+                    break;
+
                 case RTCIceConnectionState.Failed:
                 case RTCIceConnectionState.Closed:
-                    Disconnected?.Invoke();
+                    _iceDisconnectGeneration++;
+                    NotifyDisconnected($"ICE state became {state}.");
                     break;
             }
+        }
+
+        private void NotifyDisconnected(string reason)
+        {
+            if (_disposed) return;
+            UniPeekConstants.LogWarning($"[WebRTC] {reason} Falling back to JPEG.");
+            Disconnected?.Invoke();
         }
 
         // Raise the video sender's bitrate cap so the stream quality is not
@@ -444,25 +600,49 @@ namespace UniPeek
         private void ApplyBitrateSettings()
         {
             if (_pc == null) return;
+            int updatedSenders = 0;
+            int failedSenders = 0;
             foreach (var sender in _pc.GetSenders())
             {
+                if (sender.Track?.Kind != TrackKind.Video) continue;
+
                 var parameters = sender.GetParameters();
                 if (parameters.encodings == null) continue;
                 foreach (var enc in parameters.encodings)
                     enc.maxBitrate = (ulong)(_maxBitrateKbps * 1000);
-                sender.SetParameters(parameters);
+
+                var error = sender.SetParameters(parameters);
+                if (error.errorType == RTCErrorType.None)
+                    updatedSenders++;
+                else
+                {
+                    failedSenders++;
+                    UniPeekConstants.LogWarning($"[WebRTC] Failed to set video bitrate: {error.message}");
+                }
             }
-            UniPeekConstants.Log($"[WebRTC] Bitrate cap set to {_maxBitrateKbps} kbps.");
+
+            if (updatedSenders > 0)
+                UniPeekConstants.Log($"[WebRTC] Bitrate cap set to {_maxBitrateKbps} kbps on {updatedSenders} sender(s).");
+            else if (failedSenders == 0)
+                UniPeekConstants.LogWarning("[WebRTC] Bitrate cap was not applied because no RTP sender encodings were available.");
         }
 
         private void OnConnectionStateChange(RTCPeerConnectionState state)
-            => UniPeekConstants.Log($"[WebRTC] PC state → {state}");
+        {
+            if (_disposed) return;
+            UniPeekConstants.Log($"[WebRTC] PC state → {state}");
+        }
 
         private void OnRemoteDataChannel(RTCDataChannel channel)
         {
+            if (_disposed) return;
             // Flutter may open a data channel — accept and mirror messages.
+            _remoteDataChannels.Add(channel);
             channel.OnMessage = bytes =>
+            {
+                if (_disposed) return;
                 DataChannelMessage?.Invoke(Encoding.UTF8.GetString(bytes));
+            };
         }
     }
 }

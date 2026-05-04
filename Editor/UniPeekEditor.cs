@@ -432,6 +432,21 @@ namespace UniPeek
                 ConnectionManager.Instance.SetWebRtcMaxBitrate(newMbps * 1000);
                 EditorPrefs.SetInt(UniPeekConstants.PrefWebRtcMaxBitrateKbps, newMbps * 1000);
             }
+
+            GUILayout.Space(4f);
+            EditorGUI.BeginChangeCheck();
+            string stunUrl;
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                OptionLabel("STUN URL",
+                    "Optional WebRTC STUN server for VPNs, hotspots, or unusual subnet setups.\nLeave empty for local-only LAN behavior.");
+                stunUrl = EditorGUILayout.TextField(ConnectionManager.Instance.Config.WebRtcStunUrl, GUILayout.ExpandWidth(true));
+            }
+            if (EditorGUI.EndChangeCheck())
+            {
+                ConnectionManager.Instance.Config.WebRtcStunUrl = stunUrl?.Trim() ?? string.Empty;
+                EditorPrefs.SetString(UniPeekConstants.PrefWebRtcStunUrl, ConnectionManager.Instance.Config.WebRtcStunUrl);
+            }
 #else
             using (new EditorGUILayout.HorizontalScope())
             {
@@ -872,6 +887,8 @@ namespace UniPeek
             UniPeekConstants.CurrentLogLevel = _logLevel;
             ConnectionManager.Instance.Config.MaxBitrateKbps = EditorPrefs.GetInt(
                 UniPeekConstants.PrefWebRtcMaxBitrateKbps, UniPeekConstants.DefaultWebRtcMaxBitrateKbps);
+            ConnectionManager.Instance.Config.WebRtcStunUrl = EditorPrefs.GetString(
+                UniPeekConstants.PrefWebRtcStunUrl, string.Empty);
 
             // File takes priority — it's written synchronously so it's crash-safe.
             if (System.IO.File.Exists(EditorNameFilePath))

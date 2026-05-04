@@ -93,6 +93,8 @@ Selects the streaming transport:
 
 The WebRTC option only appears if the `com.unity.webrtc` package is installed.
 
+WebRTC mode runs in Play Mode and captures the composited Game View at end-of-frame, preserving Screen Space Overlay canvases and UniPeek touch gizmos. The optional **STUN URL** setting can help on VPNs, hotspots, or unusual subnet setups; leave it empty for local-only LAN behavior.
+
 ### Run in Play Mode
 
 When **on**: streaming only runs while the Editor is in Play Mode. Entering Edit Mode automatically stops streaming.

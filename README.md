@@ -123,10 +123,14 @@ Then connect the app to `localhost:7777`.
 | --- | --- | --- |
 | **Editor Name** | Text field | Display name shown in the app's device list. Defaults to the machine name. |
 | **Socket Mode** | WebSocket / WebRTC | Transport layer. WebRTC requires `com.unity.webrtc` ≥ 3.0.0. |
+| **Max Bitrate (Mbps)** | Slider | WebRTC video bitrate cap. Higher values improve quality but use more bandwidth. |
+| **STUN URL** | Text field | Optional WebRTC STUN server for VPNs, hotspots, or unusual subnet setups. Leave empty for local-only LAN behavior. |
 | **Run in Play Mode** | On / Off | **On:** streaming only runs while the Editor is in Play Mode. **Off:** streaming runs in both Edit and Play Mode (stream will briefly drop on domain reloads). |
 | **Capture Method** | Camera Render / Async GPU Readback | Camera Render is synchronous. Async GPU Readback reduces main-thread stall at the cost of ~1 frame of extra latency. |
 | **Log Level** | None / Error / Warning / All | Console verbosity for UniPeek diagnostic messages. |
 | **Port** | Integer (default 7777) | TCP port the WebSocket server listens on. Only editable when not streaming. |
+
+WebRTC mode requires Play Mode and captures the composited Game View at end-of-frame so Screen Space Overlay canvases remain visible. Direct camera capture is intentionally not used for WebRTC because it can miss overlay UI.
 
 Settings are persisted in `EditorPrefs` and restored on next launch.
 

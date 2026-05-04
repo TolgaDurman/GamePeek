@@ -95,6 +95,9 @@ namespace UniPeek
         /// <summary>EditorPrefs key for the WebRTC maximum video bitrate in kbps.</summary>
         public const string PrefWebRtcMaxBitrateKbps = "UniPeek_WebRtcMaxBitrateKbps";
 
+        /// <summary>EditorPrefs key for the optional WebRTC STUN server URL.</summary>
+        public const string PrefWebRtcStunUrl = "UniPeek_WebRtcStunUrl";
+
         /// <summary>Default WebRTC maximum video bitrate (10 Mbps).</summary>
         public const int DefaultWebRtcMaxBitrateKbps = 10_000;
 
