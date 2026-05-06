@@ -32,7 +32,7 @@ namespace UniPeek
     {
         // ── Version ──────────────────────────────────────────────────────────
         /// <summary>Current plugin version string.</summary>
-        public const string Version = "1.0.8";
+        public const string Version = "2.0";
 
         // ── Networking ───────────────────────────────────────────────────────
         /// <summary>Default WebSocket server port (normal mode — Unity listens, phone connects).</summary>

@@ -30,6 +30,7 @@ namespace UniPeek
 
         // ── QR code ───────────────────────────────────────────────────────────
         private Texture2D _qrTexture;
+        private Texture2D _downloadQrTexture;
 
         // ── Styles (initialized lazily) ───────────────────────────────────────
         private GUIStyle _titleStyle;
@@ -98,6 +99,8 @@ namespace UniPeek
                 "Assets/Plugins/UniPeek/Textures/unipeek-logo.png");
             _proIcon = AssetDatabase.LoadAssetAtPath<Texture2D>(
                 "Assets/Plugins/UniPeek/Textures/pro-user.png");
+            _downloadQrTexture = AssetDatabase.LoadAssetAtPath<Texture2D>(
+                "Assets/Plugins/UniPeek/Textures/qr-code.png");
 
             EditorApplication.playModeStateChanged += OnPlayModeChanged;
 
@@ -192,6 +195,12 @@ namespace UniPeek
             GUILayout.Space(8f);
 
             DrawDeviceList();
+
+            if (!_streaming)
+            {
+                GUILayout.Space(8f);
+                DrawDownloadAppCard();
+            }
 
             GUILayout.FlexibleSpace();
             DrawFooter();
@@ -321,6 +330,44 @@ namespace UniPeek
         }
 
         // ── Stats bar ─────────────────────────────────────────────────────────
+
+        private void DrawDownloadAppCard()
+        {
+            DrawSectionLabel("UniPeek App");
+
+            EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+            GUILayout.Space(8f);
+
+            GUILayout.Label("Download the UniPeek app", _statusTextStyle);
+            GUILayout.Label(
+                "Scan this QR code before streaming to install the iOS or Android companion app.",
+                EditorStyles.wordWrappedMiniLabel);
+            GUILayout.Space(8f);
+
+            if (_downloadQrTexture != null)
+            {
+                float size = Mathf.Min(position.width - 72f, 180f);
+                using (new EditorGUILayout.HorizontalScope())
+                {
+                    GUILayout.FlexibleSpace();
+                    GUILayout.Label(_downloadQrTexture, GUILayout.Width(size), GUILayout.Height(size));
+                    GUILayout.FlexibleSpace();
+                }
+            }
+            else
+            {
+                EditorGUILayout.HelpBox(
+                    "Download QR texture not found at Assets/Plugins/UniPeek/Textures/qr-code.png.",
+                    MessageType.Warning);
+            }
+
+            GUILayout.Space(6f);
+            if (GUILayout.Button("Open UniPeek App Page", GUILayout.Height(26f)))
+                Application.OpenURL("https://unipeek.app");
+
+            GUILayout.Space(6f);
+            EditorGUILayout.EndVertical();
+        }
 
         private void DrawStatsBar()
         {
@@ -629,6 +676,12 @@ namespace UniPeek
             }
             EditorGUI.EndDisabledGroup();
             GUILayout.FlexibleSpace();
+
+            if (GUILayout.Button("Welcome", EditorStyles.toolbarButton, GUILayout.Width(62f)))
+                UniPeekWelcomeWindow.Open();
+
+            if (GUILayout.Button("Guide", EditorStyles.toolbarButton, GUILayout.Width(44f)))
+                UniPeekGuideWindow.Open();
 
             if (GUILayout.Button("Docs", EditorStyles.toolbarButton, GUILayout.Width(38f)))
                 Application.OpenURL("https://unipeek.app");
