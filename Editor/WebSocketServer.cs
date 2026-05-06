@@ -197,6 +197,7 @@ namespace UniPeek
         private WebSocketSharp.Server.WebSocketServer _server;
         private readonly int  _port;
         private volatile bool _running;
+        private bool _eventsHooked;
 
         // ── Constructor ───────────────────────────────────────────────────────
         /// <summary>Creates the server wrapper. Call <see cref="Start"/> to bind the socket.</summary>
@@ -210,15 +211,19 @@ namespace UniPeek
         {
             if (_running) return;
 
-            // Hook static events from the behavior class
-            UniPeekBehavior.OnClientConnected    += HandleConnect;
-            UniPeekBehavior.OnClientDisconnected += HandleDisconnect;
-            UniPeekBehavior.OnTextMessage        += HandleTextMessage;
-
-            _server = new WebSocketSharp.Server.WebSocketServer(_port);
-            _server.AddWebSocketService<UniPeekBehavior>("/");
-            _server.Start();
-            _running = true;
+            try
+            {
+                _server = new WebSocketSharp.Server.WebSocketServer(_port);
+                _server.AddWebSocketService<UniPeekBehavior>("/");
+                HookBehaviorEvents();
+                _server.Start();
+                _running = true;
+            }
+            catch
+            {
+                Stop();
+                throw;
+            }
 
             UniPeekConstants.Log($"[WS] Server listening on port {_port}.");
         }
@@ -276,16 +281,48 @@ namespace UniPeek
         /// <summary>Stops the server and releases resources.</summary>
         public void Stop()
         {
-            if (!_running) return;
+            if (!_running && !_eventsHooked && _server == null) return;
             _running = false;
+
+            UnhookBehaviorEvents();
+
+            try
+            {
+                _server?.Stop();
+            }
+            catch (Exception ex)
+            {
+                UniPeekConstants.LogWarning($"[WS] Server stop failed: {ex.Message}");
+            }
+
+            _server = null;
+            UniPeekConstants.Log("[WS] Server stopped.");
+        }
+
+        private void HookBehaviorEvents()
+        {
+            if (_eventsHooked) return;
 
             UniPeekBehavior.OnClientConnected    -= HandleConnect;
             UniPeekBehavior.OnClientDisconnected -= HandleDisconnect;
             UniPeekBehavior.OnTextMessage        -= HandleTextMessage;
 
-            _server?.Stop();
-            _server = null;
-            UniPeekConstants.Log("[WS] Server stopped.");
+            UniPeekBehavior.OnClientConnected    += HandleConnect;
+            UniPeekBehavior.OnClientDisconnected += HandleDisconnect;
+            UniPeekBehavior.OnTextMessage        += HandleTextMessage;
+
+            _eventsHooked = true;
+        }
+
+        private void UnhookBehaviorEvents()
+        {
+            if (!_eventsHooked) return;
+
+            UniPeekBehavior.OnClientConnected    -= HandleConnect;
+            UniPeekBehavior.OnClientDisconnected -= HandleDisconnect;
+            UniPeekBehavior.OnTextMessage        -= HandleTextMessage;
+
+            _eventsHooked = false;
         }
 
         /// <inheritdoc/>

@@ -579,13 +579,21 @@ namespace UniPeek
             _nicIndex = 0;
             if (!string.IsNullOrEmpty(savedIP))
             {
+                bool savedIpFound = false;
                 for (int i = 0; i < _nicIPs.Length; i++)
                 {
                     if (_nicIPs[i] == savedIP)
                     {
                         _nicIndex = i + 1;
+                        savedIpFound = true;
                         break;
                     }
+                }
+
+                if (!savedIpFound)
+                {
+                    NetworkInterfaceSelector.SaveIP(string.Empty);
+                    QRCodeGenerator.Invalidate();
                 }
             }
         }
@@ -842,7 +850,15 @@ namespace UniPeek
 
         private void DoStartStreaming()
         {
-            ConnectionManager.Instance.StartStreaming(_port);
+            if (!ConnectionManager.Instance.StartStreaming(_port))
+            {
+                _streaming = false;
+                EditorPrefs.DeleteKey(PrefPendingStart);
+                EditorPrefs.DeleteKey(UniPeekConstants.PrefPersistStreaming);
+                Repaint();
+                return;
+            }
+
             _streaming = true;
 
             if (!_requirePlayMode)

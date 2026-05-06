@@ -172,63 +172,74 @@ namespace UniPeek
         /// Starts the WebSocket server and mDNS advertiser.
         /// Also auto-configures the Windows firewall on first run.
         /// </summary>
-        public void StartStreaming(int port = UniPeekConstants.DefaultPort)
+        public bool StartStreaming(int port = UniPeekConstants.DefaultPort)
         {
-            if (State != ConnectionState.Disconnected) return;
+            if (State != ConnectionState.Disconnected) return true;
 
             Port = port;
 
-            // One-time Windows firewall setup
-            FirewallHelper.EnsureFirewallRule(port);
+            try
+            {
+                // One-time Windows firewall setup
+                FirewallHelper.EnsureFirewallRule(port);
 
-            // Boot WebSocket server
-            _wsServer = new UniPeekWebSocketServer(port);
-            _wsServer.ClientConnected    += OnClientConnected;
-            _wsServer.ClientDisconnected += OnClientDisconnected;
-            _wsServer.ConfigReceived     += OnConfigReceived;
-            _wsServer.TouchReceived      += (sid, msg) => { if (sid == _hostSessionId) Enqueue(() => HandleTouch(msg)); };
-            _wsServer.GyroReceived       += (sid, msg) =>
-            {
-                if (sid != _hostSessionId) return;
-                Enqueue(() =>
+                // Boot WebSocket server
+                _wsServer = new UniPeekWebSocketServer(port);
+                _wsServer.ClientConnected    += OnClientConnected;
+                _wsServer.ClientDisconnected += OnClientDisconnected;
+                _wsServer.ConfigReceived     += OnConfigReceived;
+                _wsServer.TouchReceived      += (sid, msg) => { if (sid == _hostSessionId) Enqueue(() => HandleTouch(msg)); };
+                _wsServer.GyroReceived       += (sid, msg) =>
                 {
-                    UniPeekConstants.Log($"[Input] Gyro  x={msg.x:F3} y={msg.y:F3} z={msg.z:F3}");
-                    InputInjector.InjectGyro(msg.x, msg.y, msg.z);
-                });
-            };
-            _wsServer.AccelReceived += (sid, msg) =>
-            {
-                if (sid != _hostSessionId) return;
-                Enqueue(() =>
+                    if (sid != _hostSessionId) return;
+                    Enqueue(() =>
+                    {
+                        UniPeekConstants.Log($"[Input] Gyro  x={msg.x:F3} y={msg.y:F3} z={msg.z:F3}");
+                        InputInjector.InjectGyro(msg.x, msg.y, msg.z);
+                    });
+                };
+                _wsServer.AccelReceived += (sid, msg) =>
                 {
-                    UniPeekConstants.Log($"[Input] Accel x={msg.x:F3} y={msg.y:F3} z={msg.z:F3}");
-                    InputInjector.InjectAccelerometer(msg.x, msg.y, msg.z);
-                });
-            };
-            _wsServer.HelloReceived       += OnHelloReceived;
-            _wsServer.PongReceived        += OnPongReceived;
+                    if (sid != _hostSessionId) return;
+                    Enqueue(() =>
+                    {
+                        UniPeekConstants.Log($"[Input] Accel x={msg.x:F3} y={msg.y:F3} z={msg.z:F3}");
+                        InputInjector.InjectAccelerometer(msg.x, msg.y, msg.z);
+                    });
+                };
+                _wsServer.HelloReceived       += OnHelloReceived;
+                _wsServer.PongReceived        += OnPongReceived;
 #if UNITY_WEBRTC
-            _wsServer.AnswerReceived    += OnAnswerReceived;
-            _wsServer.CandidateReceived += OnCandidateReceived;
+                _wsServer.AnswerReceived    += OnAnswerReceived;
+                _wsServer.CandidateReceived += OnCandidateReceived;
 #endif
-            _wsServer.Start();
+                _wsServer.Start();
 
-            EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
+                EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
 
-            // Boot mDNS
-            string localIp    = QRCodeGenerator.GetLocalIPv4();
-            string editorName = EditorPrefs.GetString(UniPeekConstants.PrefEditorName, string.Empty);
-            _mdns = new MdnsAdvertiser(port, localIp, editorName);
-            _mdns.Start();
+                // Boot mDNS
+                string localIp    = QRCodeGenerator.GetLocalIPv4();
+                string editorName = EditorPrefs.GetString(UniPeekConstants.PrefEditorName, string.Empty);
+                _mdns = new MdnsAdvertiser(port, localIp, editorName);
+                _mdns.Start();
 
-            // Boot encoder + capture
-            _encoder = new FrameEncoder(_wsServer, Config.Quality);
-            _capture = new FrameCapture(_encoder, Config.Width, Config.Height, Config.FpsCap);
-            _capture.SetCaptureMethod(ActiveCaptureMethod);
-            _capture.Start();
+                // Boot encoder + capture
+                _encoder = new FrameEncoder(_wsServer, Config.Quality);
+                _capture = new FrameCapture(_encoder, Config.Width, Config.Height, Config.FpsCap);
+                _capture.SetCaptureMethod(ActiveCaptureMethod);
+                _capture.Start();
 
-            HookEditorUpdate();
-            SetState(ConnectionState.Advertising);
+                HookEditorUpdate();
+                SetState(ConnectionState.Advertising);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[UniPeek] [WS] Failed to start UniPeek on TCP port {port}. Another process may already be using it. You can change the port in the UniPeek editor window.");
+                Debug.LogException(ex);
+                StopStreaming();
+                return false;
+            }
         }
 
         /// <summary>
@@ -245,7 +256,12 @@ namespace UniPeek
         /// <summary>Stops all streaming, severs all connections, and releases resources.</summary>
         public void StopStreaming()
         {
-            if (State == ConnectionState.Disconnected) return;
+            if (State == ConnectionState.Disconnected &&
+                _wsServer == null &&
+                _mdns == null &&
+                _capture == null &&
+                _reverseClient == null)
+                return;
 
 #if UNITY_WEBRTC
             // Send shutdown to the WebRTC client BEFORE closing the peer connection,
