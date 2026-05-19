@@ -1,11 +1,11 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using UnityEditor;
 
-namespace UniPeek
+namespace GamePeek
 {
     /// <summary>A candidate network interface that can be used for binding.</summary>
     public readonly struct NetworkInterfaceOption
@@ -24,7 +24,7 @@ namespace UniPeek
 
     /// <summary>
     /// Enumerates physical/wireless network interfaces and picks the best local IP
-    /// for UniPeek to advertise and bind to, filtering out virtual adapters (VMware,
+    /// for GamePeek to advertise and bind to, filtering out virtual adapters (VMware,
     /// Hyper-V, VirtualBox, VPN tunnels, loopback, etc.).
     /// <para>
     /// The user's manual override is persisted via <see cref="EditorPrefs"/> and
@@ -34,7 +34,7 @@ namespace UniPeek
     public static class NetworkInterfaceSelector
     {
         // ── EditorPrefs key ───────────────────────────────────────────────────
-        private const string PrefSelectedIP = "UniPeek_SelectedIP";
+        private const string PrefSelectedIP = "GamePeek_SelectedIP";
 
         // ── Virtual-adapter name/description fragments (lower-case) ──────────
         private static readonly string[] VirtualKeywords =
@@ -75,7 +75,7 @@ namespace UniPeek
             }
             catch (Exception ex)
             {
-                UniPeekConstants.LogWarning($"[Network] Could not enumerate interfaces: {ex.Message}");
+                GamePeekConstants.LogWarning($"[Network] Could not enumerate interfaces: {ex.Message}");
             }
             return result;
         }
@@ -138,7 +138,7 @@ namespace UniPeek
             }
             catch (Exception ex)
             {
-                UniPeekConstants.LogWarning($"[Network] Auto-select error: {ex.Message}");
+                GamePeekConstants.LogWarning($"[Network] Auto-select error: {ex.Message}");
             }
 
             if (nics.Count == 0) return "127.0.0.1";

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Net;
@@ -8,11 +8,11 @@ using UnityEngine;
 
 using WebSocketSharp;
 
-namespace UniPeek
+namespace GamePeek
 {
     // ── State & data model ────────────────────────────────────────────────────
 
-    /// <summary>Connection state of the UniPeek plugin.</summary>
+    /// <summary>Connection state of the GamePeek plugin.</summary>
     public enum ConnectionState
     {
         /// <summary>Server is stopped; no clients connected.</summary>
@@ -49,14 +49,14 @@ namespace UniPeek
         public int Height         { get; set; } = 720;
         public int Quality        { get; set; } = 75;
         public int FpsCap         { get; set; } = 30;
-        public int MaxBitrateKbps { get; set; } = UniPeekConstants.DefaultWebRtcMaxBitrateKbps;
+        public int MaxBitrateKbps { get; set; } = GamePeekConstants.DefaultWebRtcMaxBitrateKbps;
         public string WebRtcStunUrl { get; set; } = string.Empty;
     }
 
     // ── Manager ───────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Central orchestrator for UniPeek.  Manages the full lifecycle of the
+    /// Central orchestrator for GamePeek.  Manages the full lifecycle of the
     /// WebSocket server, mDNS advertiser, frame capture, frame encoder, and
     /// (when the <c>com.unity.webrtc</c> package is present) the WebRTC streamer.
     /// <para>
@@ -90,7 +90,7 @@ namespace UniPeek
         public ConnectionState State { get; private set; } = ConnectionState.Disconnected;
 
         /// <summary>The port the WebSocket server is (or will be) listening on.</summary>
-        public int Port { get; private set; } = UniPeekConstants.DefaultPort;
+        public int Port { get; private set; } = GamePeekConstants.DefaultPort;
 
         /// <summary>Read-only view of all currently connected devices.</summary>
         public IReadOnlyList<DeviceInfo> ConnectedDevices => _devices;
@@ -108,7 +108,7 @@ namespace UniPeek
         public CaptureMethod ActiveCaptureMethod { get; private set; } = CaptureMethod.CameraRender;
 
         // ── Internal components ───────────────────────────────────────────────
-        private UniPeekWebSocketServer _wsServer;
+        private GamePeekWebSocketServer _wsServer;
         private MdnsAdvertiser         _mdns;
         private FrameCapture           _capture;
         private FrameEncoder           _encoder;
@@ -172,7 +172,7 @@ namespace UniPeek
         /// Starts the WebSocket server and mDNS advertiser.
         /// Also auto-configures the Windows firewall on first run.
         /// </summary>
-        public bool StartStreaming(int port = UniPeekConstants.DefaultPort)
+        public bool StartStreaming(int port = GamePeekConstants.DefaultPort)
         {
             if (State != ConnectionState.Disconnected) return true;
 
@@ -184,7 +184,7 @@ namespace UniPeek
                 FirewallHelper.EnsureFirewallRule(port);
 
                 // Boot WebSocket server
-                _wsServer = new UniPeekWebSocketServer(port);
+                _wsServer = new GamePeekWebSocketServer(port);
                 _wsServer.ClientConnected    += OnClientConnected;
                 _wsServer.ClientDisconnected += OnClientDisconnected;
                 _wsServer.ConfigReceived     += OnConfigReceived;
@@ -194,7 +194,7 @@ namespace UniPeek
                     if (sid != _hostSessionId) return;
                     Enqueue(() =>
                     {
-                        UniPeekConstants.Log($"[Input] Gyro  x={msg.x:F3} y={msg.y:F3} z={msg.z:F3}");
+                        GamePeekConstants.Log($"[Input] Gyro  x={msg.x:F3} y={msg.y:F3} z={msg.z:F3}");
                         InputInjector.InjectGyro(msg.x, msg.y, msg.z);
                     });
                 };
@@ -203,7 +203,7 @@ namespace UniPeek
                     if (sid != _hostSessionId) return;
                     Enqueue(() =>
                     {
-                        UniPeekConstants.Log($"[Input] Accel x={msg.x:F3} y={msg.y:F3} z={msg.z:F3}");
+                        GamePeekConstants.Log($"[Input] Accel x={msg.x:F3} y={msg.y:F3} z={msg.z:F3}");
                         InputInjector.InjectAccelerometer(msg.x, msg.y, msg.z);
                     });
                 };
@@ -219,7 +219,7 @@ namespace UniPeek
 
                 // Boot mDNS
                 string localIp    = QRCodeGenerator.GetLocalIPv4();
-                string editorName = EditorPrefs.GetString(UniPeekConstants.PrefEditorName, string.Empty);
+                string editorName = EditorPrefs.GetString(GamePeekConstants.PrefEditorName, string.Empty);
                 _mdns = new MdnsAdvertiser(port, localIp, editorName);
                 _mdns.Start();
 
@@ -235,7 +235,7 @@ namespace UniPeek
             }
             catch (Exception ex)
             {
-                Debug.LogError($"[UniPeek] [WS] Failed to start UniPeek on TCP port {port}. Another process may already be using it. You can change the port in the UniPeek editor window.");
+                Debug.LogError($"[GamePeek] [WS] Failed to start GamePeek on TCP port {port}. Another process may already be using it. You can change the port in the GamePeek editor window.");
                 Debug.LogException(ex);
                 StopStreaming();
                 return false;
@@ -307,19 +307,19 @@ namespace UniPeek
 
         /// <summary>
         /// Initiates a reverse connection: Unity connects <em>outward</em> to the
-        /// phone's WebSocket server on <paramref name="phoneIp"/>:<see cref="UniPeekConstants.ReversePort"/>.
+        /// phone's WebSocket server on <paramref name="phoneIp"/>:<see cref="GamePeekConstants.ReversePort"/>.
         /// </summary>
         public void ConnectReverse(string phoneIp)
         {
             if (string.IsNullOrWhiteSpace(phoneIp)) return;
 
             SetState(ConnectionState.ReverseConnecting);
-            string url = $"ws://{phoneIp}:{UniPeekConstants.ReversePort}/";
+            string url = $"ws://{phoneIp}:{GamePeekConstants.ReversePort}/";
 
             _reverseClient = new WebSocket(url);
             _reverseClient.OnOpen  += (_, __) => Enqueue(() =>
             {
-                UniPeekConstants.Log($"[Reverse] Connected to phone at {url}");
+                GamePeekConstants.Log($"[Reverse] Connected to phone at {url}");
                 SetState(ConnectionState.Connected);
             });
             _reverseClient.OnClose += (_, __) => Enqueue(() =>
@@ -329,7 +329,7 @@ namespace UniPeek
             });
             _reverseClient.OnError += (_, e) => Enqueue(() =>
             {
-                UniPeekConstants.LogWarning($"[Reverse] Error: {e.Message}");
+                GamePeekConstants.LogWarning($"[Reverse] Error: {e.Message}");
                 SetState(ConnectionState.Advertising);
             });
             _reverseClient.ConnectAsync();
@@ -400,7 +400,7 @@ namespace UniPeek
             }
             catch (Exception ex)
             {
-                UniPeekConstants.LogWarning($"[Config] Could not resize Game View: {ex.Message}");
+                GamePeekConstants.LogWarning($"[Config] Could not resize Game View: {ex.Message}");
             }
         }
 
@@ -426,7 +426,7 @@ namespace UniPeek
             while (_mainThreadQueue.TryDequeue(out var action))
             {
                 try { action(); }
-                catch (Exception ex) { UniPeekConstants.LogError(ex.ToString()); }
+                catch (Exception ex) { GamePeekConstants.LogError(ex.ToString()); }
             }
 
 #if UNITY_WEBRTC
@@ -456,7 +456,7 @@ namespace UniPeek
             if (State == ConnectionState.Connected && _devices.Count > 0)
             {
                 _pingTimer += Time.unscaledDeltaTime;
-                if (_pingTimer >= UniPeekConstants.PingIntervalSeconds)
+                if (_pingTimer >= GamePeekConstants.PingIntervalSeconds)
                 {
                     _pingTimer = 0f;
                     SendPing();
@@ -504,7 +504,7 @@ namespace UniPeek
                     ConnectedAt = DateTime.UtcNow,
                 };
                 _devices.Add(info);
-                UniPeekConstants.Log($"[WS] Device connected: {deviceName} (session {sessionId})");
+                GamePeekConstants.Log($"[WS] Device connected: {deviceName} (session {sessionId})");
 
 #if ENABLE_INPUT_SYSTEM
                 InputInjector.EnsureVirtualDevices();
@@ -521,13 +521,13 @@ namespace UniPeek
 
                 var info = _devices[idx];
                 _devices.RemoveAt(idx);
-                UniPeekConstants.Log($"[WS] Device disconnected: {info.DeviceName}");
+                GamePeekConstants.Log($"[WS] Device disconnected: {info.DeviceName}");
 
                 if (_hostSessionId == sessionId)
                 {
                     _hostSessionId = _devices.Count > 0 ? _devices[0].SessionId : null;
                     if (_hostSessionId != null)
-                        UniPeekConstants.Log($"[Auth] Host transferred to {_devices[0].DeviceName}");
+                        GamePeekConstants.Log($"[Auth] Host transferred to {_devices[0].DeviceName}");
                 }
 
 #if UNITY_WEBRTC
@@ -573,7 +573,7 @@ namespace UniPeek
             {
                 if (sessionId != _hostSessionId)
                 {
-                    UniPeekConstants.LogWarning($"[Auth] Config rejected from non-host session {sessionId}");
+                    GamePeekConstants.LogWarning($"[Auth] Config rejected from non-host session {sessionId}");
                     return;
                 }
                 ApplyConfig(width, height, quality, fps);
@@ -588,7 +588,7 @@ namespace UniPeek
                 if (_hostSessionId == null)
                 {
                     _hostSessionId = sessionId;
-                    UniPeekConstants.Log($"[Auth] Host session set: {hello?.deviceName ?? sessionId}");
+                    GamePeekConstants.Log($"[Auth] Host session set: {hello?.deviceName ?? sessionId}");
                 }
 
             });
@@ -622,7 +622,7 @@ namespace UniPeek
                 // EditorPrefs and StartWebRTCNegotiation both require the main thread.
                 Enqueue(() =>
                 {
-                    var socketMode = (SocketMode)EditorPrefs.GetInt(UniPeekConstants.PrefSocketMode, (int)SocketMode.WebRTC);
+                    var socketMode = (SocketMode)EditorPrefs.GetInt(GamePeekConstants.PrefSocketMode, (int)SocketMode.WebRTC);
                     if (socketMode == SocketMode.WebRTC)
                     {
                         if (Application.isPlaying)
@@ -640,7 +640,7 @@ namespace UniPeek
                 return;
             }
 #endif
-            UniPeekConstants.Log($"[WS] Hello from {hello?.client ?? "unknown"} ({hello?.deviceName ?? "?"}) session {sessionId}");
+            GamePeekConstants.Log($"[WS] Hello from {hello?.client ?? "unknown"} ({hello?.deviceName ?? "?"}) session {sessionId}");
 
             // Tell the new client whether the editor is currently in Play Mode.
             // Application.isPlaying is not thread-safe — enqueue to main thread.
@@ -681,14 +681,14 @@ namespace UniPeek
             else if (!_gameViewFocusWarningLogged)
             {
                 _gameViewFocusWarningLogged = true;
-                UniPeekConstants.LogWarning("[Input] Touch received but the Editor is not in Play Mode — Input System events will not be processed. Enter Play Mode or click the Game View to enable input.");
+                GamePeekConstants.LogWarning("[Input] Touch received but the Editor is not in Play Mode — Input System events will not be processed. Enter Play Mode or click the Game View to enable input.");
             }
 
-            UniPeekConstants.Log($"[Input] Touch phase={msg.phase} x={msg.x:F3} y={msg.y:F3} finger={msg.fingerId}");
+            GamePeekConstants.Log($"[Input] Touch phase={msg.phase} x={msg.x:F3} y={msg.y:F3} finger={msg.fingerId}");
             InputInjector.InjectTouch(msg.phase, msg.x, msg.y, msg.fingerId);
             var pos = new Vector2(msg.x, msg.y);
-            UniPeekInput.OnTouch?.Invoke(pos);
-            UniPeekInput.OnTouchDetailed?.Invoke(msg.fingerId, msg.phase, pos);
+            GamePeekInput.OnTouch?.Invoke(pos);
+            GamePeekInput.OnTouchDetailed?.Invoke(msg.fingerId, msg.phase, pos);
         }
 
         // ── WebRTC orchestration ──────────────────────────────────────────────
@@ -720,7 +720,7 @@ namespace UniPeek
                         break;
                     case "config":
                         var cfg = UnityEngine.JsonUtility.FromJson<ConfigMessage>(json);
-                        UniPeekConstants.Log($"[WS] Received: {json}");
+                        GamePeekConstants.Log($"[WS] Received: {json}");
                         OnConfigReceived(_webRtcSessionId ?? string.Empty, cfg);
                         break;
                     case "ping":
@@ -733,13 +733,13 @@ namespace UniPeek
             }
             catch (Exception ex)
             {
-                UniPeekConstants.LogWarning($"[DC] Failed to handle input: {ex.Message}");
+                GamePeekConstants.LogWarning($"[DC] Failed to handle input: {ex.Message}");
             }
         }
 
         private void StartWebRTCNegotiation(string sessionId)
         {
-            UniPeekConstants.Log($"[WebRTC] Starting negotiation for session {sessionId}");
+            GamePeekConstants.Log($"[WebRTC] Starting negotiation for session {sessionId}");
 
             TearDownWebRTC();
 
@@ -758,7 +758,7 @@ namespace UniPeek
                 if (_webRtcStreamer != streamer || _webRtcSessionId != activeSessionId) return;
                 var payload = UnityEngine.JsonUtility.ToJson(new WsOfferMsg { type = "offer", sdp = sdp });
                 _wsServer?.SendToSession(activeSessionId, payload);
-                UniPeekConstants.Log("[WebRTC] Offer sent to Flutter.");
+                GamePeekConstants.Log("[WebRTC] Offer sent to Flutter.");
             };
 
             _webRtcStreamer.IceCandidateReady += (candidate, sdpMid, sdpMLineIndex) =>
@@ -778,13 +778,13 @@ namespace UniPeek
             {
                 if (_webRtcStreamer != streamer || _webRtcSessionId != activeSessionId) return;
                 WebRtcActive = true;
-                UniPeekConstants.Log("[WebRTC] P2P connection established — video flowing.");
+                GamePeekConstants.Log("[WebRTC] P2P connection established — video flowing.");
             });
 
             _webRtcStreamer.Disconnected += () => Enqueue(() =>
             {
                 if (_webRtcStreamer != streamer || _webRtcSessionId != activeSessionId) return;
-                UniPeekConstants.Log("[WebRTC] P2P connection lost, reverting to JPEG.");
+                GamePeekConstants.Log("[WebRTC] P2P connection lost, reverting to JPEG.");
                 TearDownWebRTC();
                 // Resume JPEG pipeline
                 if (_capture != null) _capture.UseWebRTC = false;
@@ -802,7 +802,7 @@ namespace UniPeek
             }
             catch (Exception ex)
             {
-                UniPeekConstants.LogError($"[WebRTC] StartNegotiation failed: {ex.Message}");
+                GamePeekConstants.LogError($"[WebRTC] StartNegotiation failed: {ex.Message}");
                 TearDownWebRTC();
             }
         }
@@ -822,7 +822,7 @@ namespace UniPeek
         private void OnAnswerReceived(string sessionId, string sdp)
         {
             if (sessionId != _webRtcSessionId) return;
-            UniPeekConstants.Log("[WebRTC] SDP answer received from Flutter.");
+            GamePeekConstants.Log("[WebRTC] SDP answer received from Flutter.");
             _webRtcStreamer?.SetRemoteAnswer(sdp);
         }
 

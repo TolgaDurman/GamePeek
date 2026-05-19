@@ -1,13 +1,13 @@
-using System;
+﻿using System;
 using System.Diagnostics;
 using System.Threading.Tasks;
 using UnityEngine;
 
-namespace UniPeek
+namespace GamePeek
 {
     /// <summary>
     /// Encodes raw captured frame data as JPEG on a background thread and
-    /// delivers the result to the <see cref="UniPeekWebSocketServer"/>.
+    /// delivers the result to the <see cref="GamePeekWebSocketServer"/>.
     /// <para>
     /// The encoder operates as a single-slot pipeline: a new encode is
     /// only started when the previous one has completed, implementing
@@ -27,7 +27,7 @@ namespace UniPeek
     {
         // ── State ─────────────────────────────────────────────────────────────
         private volatile bool _encoding;
-        private UniPeekWebSocketServer _server;
+        private GamePeekWebSocketServer _server;
         private int   _quality = 75;
 
         // ── Stats ─────────────────────────────────────────────────────────────
@@ -50,7 +50,7 @@ namespace UniPeek
         /// </summary>
         /// <param name="server">WebSocket server to broadcast frames to.</param>
         /// <param name="quality">Initial JPEG quality [0, 100] (default 75).</param>
-        public FrameEncoder(UniPeekWebSocketServer server, int quality = 75)
+        public FrameEncoder(GamePeekWebSocketServer server, int quality = 75)
         {
             _server  = server;
             _quality = Mathf.Clamp(quality, 1, 100);
@@ -59,7 +59,7 @@ namespace UniPeek
         // ── Public API ────────────────────────────────────────────────────────
 
         /// <summary>Sets or replaces the WebSocket server used for broadcasting.</summary>
-        public void SetServer(UniPeekWebSocketServer server) => _server = server;
+        public void SetServer(GamePeekWebSocketServer server) => _server = server;
 
         /// <summary>
         /// Updates the JPEG quality used for subsequent encodes.
@@ -115,7 +115,7 @@ namespace UniPeek
             }
             catch (Exception ex)
             {
-                UniPeekConstants.LogWarning($"[Encoder] JPEG encode failed: {ex.Message}");
+                GamePeekConstants.LogWarning($"[Encoder] JPEG encode failed: {ex.Message}");
             }
             finally
             {
@@ -134,7 +134,7 @@ namespace UniPeek
                     try { _server?.BroadcastFrame(jpegRef); }
                     catch (Exception ex)
                     {
-                        UniPeekConstants.LogWarning($"[Encoder] Broadcast failed: {ex.Message}");
+                        GamePeekConstants.LogWarning($"[Encoder] Broadcast failed: {ex.Message}");
                     }
                 });
             }

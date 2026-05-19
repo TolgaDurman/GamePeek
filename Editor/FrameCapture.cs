@@ -1,10 +1,10 @@
-using System;
+﻿using System;
 using System.Collections;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Rendering;
 
-namespace UniPeek
+namespace GamePeek
 {
     /// <summary>Strategy used to capture each frame.</summary>
     public enum CaptureMethod
@@ -191,7 +191,7 @@ namespace UniPeek
         private void EnsureHelper()
         {
             if (_helper != null) return;
-            var go = new GameObject("[UniPeek] CaptureHelper") { hideFlags = HideFlags.HideAndDontSave };
+            var go = new GameObject("[GamePeek] CaptureHelper") { hideFlags = HideFlags.HideAndDontSave };
             _helper          = go.AddComponent<CaptureHelper>();
             _helper.OnFrame  = OnHelperFrame;
         }
@@ -254,7 +254,7 @@ namespace UniPeek
             }
             catch (Exception ex)
             {
-                UniPeekConstants.LogWarning($"[Capture] Screen capture processing failed: {ex.Message}");
+                GamePeekConstants.LogWarning($"[Capture] Screen capture processing failed: {ex.Message}");
             }
             finally
             {
@@ -312,7 +312,7 @@ namespace UniPeek
             {
                 cam.targetTexture    = prevTarget;
                 RenderTexture.active = prevActive;
-                UniPeekConstants.LogWarning($"[Capture] Camera render failed: {ex.Message}");
+                GamePeekConstants.LogWarning($"[Capture] Camera render failed: {ex.Message}");
             }
             finally
             {
@@ -352,7 +352,7 @@ namespace UniPeek
             {
                 cam.targetTexture = prevTarget;
                 if (rt != null) RenderTexture.ReleaseTemporary(rt);
-                UniPeekConstants.LogWarning($"[Capture] AsyncGPU camera render failed: {ex.Message}");
+                GamePeekConstants.LogWarning($"[Capture] AsyncGPU camera render failed: {ex.Message}");
                 return;
             }
 
@@ -381,7 +381,7 @@ namespace UniPeek
                 }
                 catch (Exception ex)
                 {
-                    UniPeekConstants.LogWarning($"[Capture] AsyncGPU readback processing failed: {ex.Message}");
+                    GamePeekConstants.LogWarning($"[Capture] AsyncGPU readback processing failed: {ex.Message}");
                 }
                 finally
                 {
@@ -451,7 +451,7 @@ namespace UniPeek
             }
             catch (Exception ex)
             {
-                UniPeekConstants.LogWarning($"[Capture] CaptureHelper OnFrame callback threw: {ex.Message}");
+                GamePeekConstants.LogWarning($"[Capture] CaptureHelper OnFrame callback threw: {ex.Message}");
                 UnityEngine.Object.DestroyImmediate(tex);
             }
         }

@@ -1,8 +1,8 @@
-using UnityEngine;
+﻿using UnityEngine;
 
-namespace UniPeek
+namespace GamePeek
 {
-    /// <summary>Controls how verbose UniPeek's console output is.</summary>
+    /// <summary>Controls how verbose GamePeek's console output is.</summary>
     public enum LogLevel
     {
         /// <summary>No console output at all.</summary>
@@ -25,10 +25,10 @@ namespace UniPeek
     }
 
     /// <summary>
-    /// Shared constants, port numbers, and logging utilities for the UniPeek plugin.
-    /// All other UniPeek components reference this class for configuration defaults.
+    /// Shared constants, port numbers, and logging utilities for the GamePeek plugin.
+    /// All other GamePeek components reference this class for configuration defaults.
     /// </summary>
-    public static class UniPeekConstants
+    public static class GamePeekConstants
     {
         // ── Version ──────────────────────────────────────────────────────────
         /// <summary>Current plugin version string.</summary>
@@ -65,38 +65,38 @@ namespace UniPeek
 
         // ── EditorPrefs keys ─────────────────────────────────────────────────
         /// <summary>EditorPrefs key for the auto-stop-on-play-mode toggle.</summary>
-        public const string PrefAutoStopPlay = "UniPeek_AutoStopPlay";
+        public const string PrefAutoStopPlay = "GamePeek_AutoStopPlay";
 
         /// <summary>EditorPrefs key for the user-defined editor display name (shown in Flutter discovery).</summary>
-        public const string PrefEditorName = "UniPeek_EditorName";
+        public const string PrefEditorName = "GamePeek_EditorName";
 
         /// <summary>
         /// EditorPrefs key that persists across domain reloads to indicate streaming
         /// should auto-restart (set when streaming is started with "Only run in Play Mode" OFF).
         /// Cleared when the user manually stops streaming.
         /// </summary>
-        public const string PrefPersistStreaming = "UniPeek_PersistStreaming";
+        public const string PrefPersistStreaming = "GamePeek_PersistStreaming";
 
         /// <summary>EditorPrefs key for the active <see cref="SocketMode"/>.</summary>
-        public const string PrefSocketMode = "UniPeek_SocketMode";
+        public const string PrefSocketMode = "GamePeek_SocketMode";
 
         /// <summary>EditorPrefs key for the user-configured WebSocket port.</summary>
-        public const string PrefPort = "UniPeek_Port";
+        public const string PrefPort = "GamePeek_Port";
 
         /// <summary>EditorPrefs key for the active <see cref="LogLevel"/>.</summary>
-        public const string PrefLogLevel = "UniPeek_LogLevel";
+        public const string PrefLogLevel = "GamePeek_LogLevel";
 
         /// <summary>EditorPrefs key for auto-starting streaming when entering Play Mode.</summary>
-        public const string PrefAutoStartOnPlay = "UniPeek_AutoStartOnPlay";
+        public const string PrefAutoStartOnPlay = "GamePeek_AutoStartOnPlay";
 
         /// <summary>EditorPrefs key for the show-touch-gizmos toggle.</summary>
-        public const string PrefShowTouchGizmos = "UniPeek_ShowTouchGizmos";
+        public const string PrefShowTouchGizmos = "GamePeek_ShowTouchGizmos";
 
         /// <summary>EditorPrefs key for the WebRTC maximum video bitrate in kbps.</summary>
-        public const string PrefWebRtcMaxBitrateKbps = "UniPeek_WebRtcMaxBitrateKbps";
+        public const string PrefWebRtcMaxBitrateKbps = "GamePeek_WebRtcMaxBitrateKbps";
 
         /// <summary>EditorPrefs key for the optional WebRTC STUN server URL.</summary>
-        public const string PrefWebRtcStunUrl = "UniPeek_WebRtcStunUrl";
+        public const string PrefWebRtcStunUrl = "GamePeek_WebRtcStunUrl";
 
         /// <summary>Default WebRTC maximum video bitrate (10 Mbps).</summary>
         public const int DefaultWebRtcMaxBitrateKbps = 10_000;
@@ -106,25 +106,25 @@ namespace UniPeek
         public static LogLevel CurrentLogLevel { get; set; } = LogLevel.All;
 
         // ── Logging helpers ──────────────────────────────────────────────────
-        /// <summary>Writes an info-level message tagged with [UniPeek] when <see cref="CurrentLogLevel"/> is <c>All</c>.</summary>
+        /// <summary>Writes an info-level message tagged with [GamePeek] when <see cref="CurrentLogLevel"/> is <c>All</c>.</summary>
         public static void Log(string message)
         {
             if (CurrentLogLevel == LogLevel.All)
-                Debug.Log($"[UniPeek] {message}");
+                Debug.Log($"[GamePeek] {message}");
         }
 
-        /// <summary>Writes a warning tagged with [UniPeek] when <see cref="CurrentLogLevel"/> is <c>Warning</c> or higher.</summary>
+        /// <summary>Writes a warning tagged with [GamePeek] when <see cref="CurrentLogLevel"/> is <c>Warning</c> or higher.</summary>
         public static void LogWarning(string message)
         {
             if (CurrentLogLevel >= LogLevel.Warning)
-                Debug.LogWarning($"[UniPeek] {message}");
+                Debug.LogWarning($"[GamePeek] {message}");
         }
 
-        /// <summary>Writes an error tagged with [UniPeek] unless <see cref="CurrentLogLevel"/> is <c>None</c>.</summary>
+        /// <summary>Writes an error tagged with [GamePeek] unless <see cref="CurrentLogLevel"/> is <c>None</c>.</summary>
         public static void LogError(string message)
         {
             if (CurrentLogLevel >= LogLevel.Error)
-                Debug.LogError($"[UniPeek] {message}");
+                Debug.LogError($"[GamePeek] {message}");
         }
     }
 }

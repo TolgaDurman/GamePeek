@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using UnityEditor;
 using UnityEngine;
 
@@ -8,7 +8,7 @@ using UnityEngine.InputSystem.LowLevel;
 using UnityEngine.InputSystem.Controls;
 #endif
 
-namespace UniPeek
+namespace GamePeek
 {
     /// <summary>
     /// Injects touch, gyroscope, and accelerometer events received from the
@@ -239,7 +239,7 @@ namespace UniPeek
                 new[] { typeof(Touch) }, null);
 
             if (_cachedSimMethod == null)
-                UniPeekConstants.LogWarning("[InputInjector] Input.SimulateTouch(Touch) not found.");
+                GamePeekConstants.LogWarning("[InputInjector] Input.SimulateTouch(Touch) not found.");
 
             return _cachedSimMethod;
         }
@@ -263,7 +263,7 @@ namespace UniPeek
                     if (!_legacyWarningLogged)
                     {
                         _legacyWarningLogged = true;
-                        UniPeekConstants.LogWarning(
+                        GamePeekConstants.LogWarning(
                             "[InputInjector] Touch injection unavailable in Legacy Input Manager for this Unity version.");
                     }
                     return;
@@ -282,7 +282,7 @@ namespace UniPeek
                 if (!_legacyWarningLogged)
                 {
                     _legacyWarningLogged = true;
-                    UniPeekConstants.LogWarning($"[InputInjector] Legacy touch injection failed: {ex.Message}");
+                    GamePeekConstants.LogWarning($"[InputInjector] Legacy touch injection failed: {ex.Message}");
                 }
             }
         }

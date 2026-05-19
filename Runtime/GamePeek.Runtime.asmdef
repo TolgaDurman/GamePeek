@@ -1,6 +1,6 @@
-{
-    "name": "UniPeek.Runtime",
-    "rootNamespace": "UniPeek",
+﻿{
+    "name": "GamePeek.Runtime",
+    "rootNamespace": "GamePeek",
     "references": [],
     "includePlatforms": [],
     "excludePlatforms": [],

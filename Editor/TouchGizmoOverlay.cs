@@ -1,13 +1,13 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Rendering;
 
-namespace UniPeek
+namespace GamePeek
 {
     /// <summary>
     /// Draws touch-position circles on top of the Game View using GL whenever
-    /// the phone sends touch events via UniPeek.
+    /// the phone sends touch events via GamePeek.
     /// Activated automatically via <see cref="InitializeOnLoadAttribute"/>.
     /// </summary>
     [InitializeOnLoad]
@@ -28,8 +28,8 @@ namespace UniPeek
         /// </summary>
         internal static bool ShowGizmos
         {
-            get => EditorPrefs.GetBool(UniPeekConstants.PrefShowTouchGizmos, true);
-            set => EditorPrefs.SetBool(UniPeekConstants.PrefShowTouchGizmos, value);
+            get => EditorPrefs.GetBool(GamePeekConstants.PrefShowTouchGizmos, true);
+            set => EditorPrefs.SetBool(GamePeekConstants.PrefShowTouchGizmos, value);
         }
 
         // How long (seconds) to keep showing a touch after the last "moved" before
@@ -38,7 +38,7 @@ namespace UniPeek
 
         static TouchGizmoOverlay()
         {
-            UniPeekInput.OnTouchDetailed             += OnTouchDetailed;
+            GamePeekInput.OnTouchDetailed             += OnTouchDetailed;
             Camera.onPostRender                      += OnBuiltInPostRender;   // Built-in RP
             RenderPipelineManager.endCameraRendering += OnSrpCameraRendering;  // URP/HDRP — scene view
             RenderPipelineManager.endFrameRendering  += OnSrpEndFrame;         // URP/HDRP — game view

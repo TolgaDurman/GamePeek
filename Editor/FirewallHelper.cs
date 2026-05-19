@@ -1,17 +1,17 @@
-using System;
+﻿using System;
 using System.Diagnostics;
 using System.IO;
 using UnityEditor;
 
-namespace UniPeek
+namespace GamePeek
 {
     /// <summary>
-    /// Manages OS-level firewall rules required for the UniPeek WebSocket server.
+    /// Manages OS-level firewall rules required for the GamePeek WebSocket server.
     /// <para>
     /// On <b>Windows</b>: uses an elevated PowerShell script to:
     /// (1) remove any application-level block rules Windows auto-created when the
     ///     "Allow Unity through firewall?" prompt was dismissed, and
-    /// (2) add a port-based allow rule for UniPeek.
+    /// (2) add a port-based allow rule for GamePeek.
     /// The result is persisted in <see cref="EditorPrefs"/> so setup only runs once.
     /// </para>
     /// <para>
@@ -21,16 +21,16 @@ namespace UniPeek
     /// </summary>
     public static class FirewallHelper
     {
-        private const string PrefKey  = "UniPeek_FirewallConfigured";
-        private const string RuleName = "UniPeek";
+        private const string PrefKey  = "GamePeek_FirewallConfigured";
+        private const string RuleName = "GamePeek";
 
         /// <summary>
         /// Ensures an inbound firewall rule exists for <paramref name="port"/>.
         /// On Windows, runs an elevated PowerShell script the first time and persists
         /// the result in <see cref="EditorPrefs"/> so it never runs twice.
         /// </summary>
-        /// <param name="port">TCP port to open (defaults to <see cref="UniPeekConstants.DefaultPort"/>).</param>
-        public static void EnsureFirewallRule(int port = UniPeekConstants.DefaultPort)
+        /// <param name="port">TCP port to open (defaults to <see cref="GamePeekConstants.DefaultPort"/>).</param>
+        public static void EnsureFirewallRule(int port = GamePeekConstants.DefaultPort)
         {
 #if UNITY_EDITOR_WIN
             if (EditorPrefs.GetBool(PrefKey, false))
@@ -42,13 +42,13 @@ namespace UniPeek
 
         /// <summary>
         /// Clears the stored flag and immediately re-runs firewall setup.
-        /// Use this from the UniPeek window or the menu item below to test
+        /// Use this from the GamePeek window or the menu item below to test
         /// the setup flow on your own machine.
         /// </summary>
         public static void ResetAndReConfigure()
         {
             ResetFlag();
-            EnsureFirewallRule(UniPeekConstants.DefaultPort);
+            EnsureFirewallRule(GamePeekConstants.DefaultPort);
         }
 
         /// <summary>
@@ -78,7 +78,7 @@ namespace UniPeek
 
                 // PowerShell script (written to a temp file to avoid cmd-line escaping issues):
                 //   1. Remove any inbound block rules targeting this Unity executable.
-                //   2. Remove stale UniPeek port rules (idempotent re-run safety).
+                //   2. Remove stale GamePeek port rules (idempotent re-run safety).
                 //   3. Add a fresh port-based allow rule covering all profiles.
                 string script =
                     "# Step 1 – remove block rules Windows auto-created for Unity Editor\n" +
@@ -87,13 +87,13 @@ namespace UniPeek
                     "    $filter = $_ | Get-NetFirewallApplicationFilter -ErrorAction SilentlyContinue\n" +
                     "    if ($filter -and $filter.Program -eq $exe) { Remove-NetFirewallRule -Name $_.Name }\n" +
                     "}\n" +
-                    $"# Step 2 – remove stale UniPeek rules\n" +
+                    $"# Step 2 – remove stale GamePeek rules\n" +
                     $"Remove-NetFirewallRule -DisplayName '{RuleName}' -ErrorAction SilentlyContinue\n" +
                     $"# Step 3 – add allow rule\n" +
                     $"New-NetFirewallRule -DisplayName '{RuleName}' -Direction Inbound " +
                     $"-Action Allow -Protocol TCP -LocalPort {port} -Profile Any | Out-Null\n";
 
-                string tmpScript = Path.Combine(Path.GetTempPath(), "unipeek_fw.ps1");
+                string tmpScript = Path.Combine(Path.GetTempPath(), "gamepeek_fw.ps1");
                 File.WriteAllText(tmpScript, script);
 
                 var psi = new ProcessStartInfo(
@@ -113,18 +113,18 @@ namespace UniPeek
 
                 if (proc?.ExitCode != 0)
                 {
-                    UniPeekConstants.LogWarning(
+                    GamePeekConstants.LogWarning(
                         $"[Firewall] Setup may not have completed (PowerShell exit {proc?.ExitCode}). " +
                         "UAC may have been denied. Will retry on next Start.");
                     return;
                 }
 
                 EditorPrefs.SetBool(PrefKey, true);
-                UniPeekConstants.Log($"[Firewall] Rule '{RuleName}' configured for TCP {port} on all profiles.");
+                GamePeekConstants.Log($"[Firewall] Rule '{RuleName}' configured for TCP {port} on all profiles.");
             }
             catch (Exception ex)
             {
-                UniPeekConstants.LogWarning(
+                GamePeekConstants.LogWarning(
                     $"[Firewall] Could not configure automatically: {ex.Message}\n" +
                     "Run this in an elevated PowerShell:\n" +
                     $"  New-NetFirewallRule -DisplayName \"{RuleName}\" -Direction Inbound " +

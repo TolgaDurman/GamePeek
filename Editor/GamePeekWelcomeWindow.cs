@@ -1,23 +1,23 @@
-using UnityEditor;
+﻿using UnityEditor;
 using UnityEngine;
 
-namespace UniPeek
+namespace GamePeek
 {
     /// <summary>
-    /// Welcome window that opens automatically the first time UniPeek is imported
+    /// Welcome window that opens automatically the first time GamePeek is imported
     /// into a project (or when a new version is detected).
-    /// Access manually via  Window → UniPeek Welcome.
+    /// Access manually via  Window → GamePeek Welcome.
     /// </summary>
-    internal sealed class UniPeekWelcomeWindow : EditorWindow
+    internal sealed class GamePeekWelcomeWindow : EditorWindow
     {
         // ── Paths ─────────────────────────────────────────────────────────────
-        private const string QrTexturePath   = "Assets/Plugins/UniPeek/Textures/qr-code.png";
-        private const string LogoTexturePath = "Assets/Plugins/UniPeek/Textures/unipeek-logo.png";
+        private const string QrTexturePath   = "Assets/Plugins/GamePeek/Textures/qr-code.png";
+        private const string LogoTexturePath = "Assets/Plugins/GamePeek/Textures/gamepeek-logo.png";
 
         // ── EditorPrefs key ───────────────────────────────────────────────────
         // Stores the last version for which the welcome window was shown.
         // Set to the literal string "never" by "Don't show again".
-        private const string PrefShownVersion = "UniPeek_WelcomeShownVersion";
+        private const string PrefShownVersion = "GamePeek_WelcomeShownVersion";
 
         // ── State ─────────────────────────────────────────────────────────────
         private Texture2D _qrTexture;
@@ -36,7 +36,7 @@ namespace UniPeek
         // ─────────────────────────────────────────────────────────────────────
 
         /// <summary>
-        /// Nested postprocessor detects when the UniPeek package files land in
+        /// Nested postprocessor detects when the GamePeek package files land in
         /// the project and schedules the welcome window for the next editor frame.
         /// </summary>
         private sealed class ImportDetector : AssetPostprocessor
@@ -52,9 +52,9 @@ namespace UniPeek
                 foreach (var path in importedAssets)
                 {
                     // Trigger on the constants file — it is always present and
-                    // uniquely identifies a UniPeek import.
-                    if (path.StartsWith("Assets/Plugins/UniPeek/", System.StringComparison.OrdinalIgnoreCase)
-                        && path.EndsWith("UniPeek.cs", System.StringComparison.OrdinalIgnoreCase))
+                    // uniquely identifies a GamePeek import.
+                    if (path.StartsWith("Assets/Plugins/GamePeek/", System.StringComparison.OrdinalIgnoreCase)
+                        && path.EndsWith("GamePeek.cs", System.StringComparison.OrdinalIgnoreCase))
                     {
                         ShowIfNew();
                         return;
@@ -71,11 +71,11 @@ namespace UniPeek
         internal static void ShowIfNew()
         {
             var shownVersion = EditorPrefs.GetString(PrefShownVersion, string.Empty);
-            if (shownVersion == UniPeekConstants.Version || shownVersion == "never") return;
+            if (shownVersion == GamePeekConstants.Version || shownVersion == "never") return;
 
             EditorApplication.delayCall += () =>
             {
-                EditorPrefs.SetString(PrefShownVersion, UniPeekConstants.Version);
+                EditorPrefs.SetString(PrefShownVersion, GamePeekConstants.Version);
                 Open();
             };
         }
@@ -84,12 +84,12 @@ namespace UniPeek
         // Menu item
         // ─────────────────────────────────────────────────────────────────────
 
-        // [MenuItem("Window/UniPeek Welcome")]
+        // [MenuItem("Window/GamePeek Welcome")]
         public static void Open()
         {
-            var window = GetWindow<UniPeekWelcomeWindow>(
+            var window = GetWindow<GamePeekWelcomeWindow>(
                 utility: true,
-                title: "Welcome to UniPeek",
+                title: "Welcome to GamePeek",
                 focus: true);
             window.minSize = new Vector2(400f, 520f);
             window.maxSize = new Vector2(500f, 720f);
@@ -127,11 +127,11 @@ namespace UniPeek
             }
 
             GUILayout.Space(6f);
-            GUILayout.Label("Welcome to UniPeek", _headerStyle);
-            GUILayout.Label($"v{UniPeekConstants.Version}", EditorStyles.centeredGreyMiniLabel);
+            GUILayout.Label("Welcome to GamePeek", _headerStyle);
+            GUILayout.Label($"v{GamePeekConstants.Version}", EditorStyles.centeredGreyMiniLabel);
             GUILayout.Space(6f);
             EditorGUILayout.LabelField(
-                "Stream the Unity Game View to the UniPeek app on your iOS or Android device " +
+                "Stream the Unity Game View to the GamePeek app on your iOS or Android device " +
                 "in real-time over Wi-Fi.",
                 _bodyStyle);
 
@@ -143,7 +143,7 @@ namespace UniPeek
             GUILayout.Label("Download the App", _subheaderStyle);
             GUILayout.Space(4f);
             EditorGUILayout.LabelField(
-                "Scan the QR code to download the UniPeek companion app.",
+                "Scan the QR code to download the GamePeek companion app.",
                 _bodyStyle);
             GUILayout.Space(6f);
 
@@ -168,9 +168,9 @@ namespace UniPeek
             // Quick start ─────────────────────────────────────────────────────
             GUILayout.Label("Quick Start", _subheaderStyle);
             GUILayout.Space(4f);
-            DrawStep("1", "Open  Window \u2192 UniPeek.");
+            DrawStep("1", "Open  Window \u2192 GamePeek.");
             DrawStep("2", "Click  \u25b6 Start Streaming  — a QR code appears.");
-            DrawStep("3", "Open the UniPeek app on your phone and tap  Scan QR.");
+            DrawStep("3", "Open the GamePeek app on your phone and tap  Scan QR.");
             DrawStep("4", "Point the camera at the QR code in the Editor.");
             DrawStep("5", "The live Game View streams to your device.");
 
@@ -192,9 +192,9 @@ namespace UniPeek
             // Action buttons ──────────────────────────────────────────────────
             using (new EditorGUILayout.HorizontalScope())
             {
-                if (GUILayout.Button("Open UniPeek", GUILayout.Height(32f)))
+                if (GUILayout.Button("Open GamePeek", GUILayout.Height(32f)))
                 {
-                    UniPeekWindow.ShowWindow();
+                    GamePeekWindow.ShowWindow();
                     Close();
                 }
 

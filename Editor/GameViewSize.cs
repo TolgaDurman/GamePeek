@@ -1,11 +1,11 @@
-// Derived from com.unity.testframework.graphics (MIT licence).
+﻿// Derived from com.unity.testframework.graphics (MIT licence).
 // Only the SetCustomSize / SelectSize paths are retained.
 using System;
 using System.Collections;
 using System.Reflection;
 using UnityEditor;
 
-namespace UniPeek
+namespace GamePeek
 {
     public static class GameViewSize
     {
@@ -40,7 +40,7 @@ namespace UniPeek
             var ctor = sizeType?.GetConstructor(
                 new[] { sizeEnumType, typeof(int), typeof(int), typeof(string) });
             // enum value 1 == FixedResolution
-            return ctor?.Invoke(new object[] { 1, width, height, "UniPeekCapture" });
+            return ctor?.Invoke(new object[] { 1, width, height, "GamePeekCapture" });
         }
 
         static object FindExistingSlot()
@@ -58,7 +58,7 @@ namespace UniPeek
                 var label = itr.Current?.GetType()
                     .GetField("m_BaseText", BindingFlags.NonPublic | BindingFlags.Instance)
                     ?.GetValue(itr.Current) as string;
-                if (label == "UniPeekCapture") return itr.Current;
+                if (label == "GamePeekCapture") return itr.Current;
             }
             return null;
         }
@@ -84,7 +84,7 @@ namespace UniPeek
         // ── Public surface (matches the package's API) ────────────────────────
 
         /// <summary>
-        /// Creates or reuses the "UniPeekCapture" custom Game View size slot
+        /// Creates or reuses the "GamePeekCapture" custom Game View size slot
         /// and sets it to <paramref name="width"/> × <paramref name="height"/>.
         /// Returns the size object required by <see cref="SelectSize"/>.
         /// </summary>

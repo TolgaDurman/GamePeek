@@ -1,12 +1,12 @@
-using UnityEditor;
+﻿using UnityEditor;
 using UnityEngine;
 
-namespace UniPeek
+namespace GamePeek
 {
     /// <summary>
-    /// Main UniPeek Editor window (<c>Window ▶ UniPeek</c>).
+    /// Main GamePeek Editor window (<c>Window ▶ GamePeek</c>).
     /// </summary>
-    public sealed class UniPeekWindow : EditorWindow
+    public sealed class GamePeekWindow : EditorWindow
     {
         // ── Persistent settings ───────────────────────────────────────────────
         private bool _requirePlayMode;
@@ -19,7 +19,7 @@ namespace UniPeek
         private bool _autoStartedByPlayMode;
 
         // Survives domain reloads; claimed with DeleteKey to prevent double-start.
-        private const string PrefPendingStart = "UniPeek_PendingStart";
+        private const string PrefPendingStart = "GamePeek_PendingStart";
 
         // ── Runtime state ─────────────────────────────────────────────────────
         private bool  _streaming;
@@ -49,7 +49,7 @@ namespace UniPeek
         private string _editorName = string.Empty;
 
         // ── Port ──────────────────────────────────────────────────────────────
-        private int _port = UniPeekConstants.DefaultPort;
+        private int _port = GamePeekConstants.DefaultPort;
 
         // ── Package install ───────────────────────────────────────────────────
         private bool _webRtcInstallRequested;
@@ -74,14 +74,14 @@ namespace UniPeek
         // Menu item
         // ─────────────────────────────────────────────────────────────────────
 
-        [MenuItem("Window/UniPeek")]
+        [MenuItem("Window/GamePeek")]
         public static void ShowWindow()
         {
             var logoTex = AssetDatabase.LoadAssetAtPath<Texture2D>(
-                "Assets/Plugins/UniPeek/Textures/unipeek-logo.png");
+                "Assets/Plugins/GamePeek/Textures/gamepeek-logo.png");
 
-            var window = GetWindow<UniPeekWindow>(utility: false, title: "UniPeek", focus: true);
-            window.titleContent = new GUIContent("UniPeek", logoTex, "UniPeek — Game View streaming");
+            var window = GetWindow<GamePeekWindow>(utility: false, title: "GamePeek", focus: true);
+            window.titleContent = new GUIContent("GamePeek", logoTex, "GamePeek — Game View streaming");
             window.minSize = new Vector2(280f, 440f);
         }
 
@@ -96,11 +96,11 @@ namespace UniPeek
             SubscribeToManager();
 
             _logoTexture = AssetDatabase.LoadAssetAtPath<Texture2D>(
-                "Assets/Plugins/UniPeek/Textures/unipeek-logo.png");
+                "Assets/Plugins/GamePeek/Textures/gamepeek-logo.png");
             _proIcon = AssetDatabase.LoadAssetAtPath<Texture2D>(
-                "Assets/Plugins/UniPeek/Textures/pro-user.png");
+                "Assets/Plugins/GamePeek/Textures/pro-user.png");
             _downloadQrTexture = AssetDatabase.LoadAssetAtPath<Texture2D>(
-                "Assets/Plugins/UniPeek/Textures/qr-code.png");
+                "Assets/Plugins/GamePeek/Textures/qr-code.png");
 
             EditorApplication.playModeStateChanged += OnPlayModeChanged;
 
@@ -112,7 +112,7 @@ namespace UniPeek
                 EditorPrefs.DeleteKey(PrefPendingStart);
                 DoStartStreaming();
             }
-            else if (!_requirePlayMode && EditorPrefs.GetBool(UniPeekConstants.PrefPersistStreaming, false))
+            else if (!_requirePlayMode && EditorPrefs.GetBool(GamePeekConstants.PrefPersistStreaming, false))
             {
                 DoStartStreaming();
             }
@@ -148,7 +148,7 @@ namespace UniPeek
 
             if (state == PlayModeStateChange.EnteredPlayMode
                 && !_requirePlayMode && !_streaming
-                && EditorPrefs.GetBool(UniPeekConstants.PrefPersistStreaming, false))
+                && EditorPrefs.GetBool(GamePeekConstants.PrefPersistStreaming, false))
             {
                 DoStartStreaming();
                 return;
@@ -216,8 +216,8 @@ namespace UniPeek
             if (_logoTexture != null)
                 GUILayout.Label(_logoTexture, GUILayout.Width(18f), GUILayout.Height(18f));
 
-            GUILayout.Label("UniPeek", _titleStyle, GUILayout.ExpandWidth(true));
-            GUILayout.Label($"v{UniPeekConstants.Version}", _versionStyle);
+            GUILayout.Label("GamePeek", _titleStyle, GUILayout.ExpandWidth(true));
+            GUILayout.Label($"v{GamePeekConstants.Version}", _versionStyle);
         }
 
         // ── Status card ───────────────────────────────────────────────────────
@@ -324,7 +324,7 @@ namespace UniPeek
             }
 
             GUILayout.Label(
-                "Scan with the UniPeek app to connect",
+                "Scan with the GamePeek app to connect",
                 EditorStyles.centeredGreyMiniLabel);
             GUILayout.Space(10f);
         }
@@ -333,12 +333,12 @@ namespace UniPeek
 
         private void DrawDownloadAppCard()
         {
-            DrawSectionLabel("UniPeek App");
+            DrawSectionLabel("GamePeek App");
 
             EditorGUILayout.BeginVertical(EditorStyles.helpBox);
             GUILayout.Space(8f);
 
-            GUILayout.Label("Download the UniPeek app", _statusTextStyle);
+            GUILayout.Label("Download the GamePeek app", _statusTextStyle);
             GUILayout.Label(
                 "Scan this QR code before streaming to install the iOS or Android companion app.",
                 EditorStyles.wordWrappedMiniLabel);
@@ -357,13 +357,13 @@ namespace UniPeek
             else
             {
                 EditorGUILayout.HelpBox(
-                    "Download QR texture not found at Assets/Plugins/UniPeek/Textures/qr-code.png.",
+                    "Download QR texture not found at Assets/Plugins/GamePeek/Textures/qr-code.png.",
                     MessageType.Warning);
             }
 
             GUILayout.Space(6f);
-            if (GUILayout.Button("Open UniPeek App Page", GUILayout.Height(26f)))
-                Application.OpenURL("https://unipeek.app");
+            if (GUILayout.Button("Open GamePeek App Page", GUILayout.Height(26f)))
+                Application.OpenURL("https://gamepeek.app");
 
             GUILayout.Space(6f);
             EditorGUILayout.EndVertical();
@@ -401,7 +401,7 @@ namespace UniPeek
             using (new EditorGUILayout.HorizontalScope())
             {
                 OptionLabel("Editor Name",
-                    "Display name shown in the UniPeek app's device list.\nDefaults to your machine name.");
+                    "Display name shown in the GamePeek app's device list.\nDefaults to your machine name.");
                 _editorName = EditorGUILayout.TextField(_editorName, GUILayout.ExpandWidth(true));
                 if (GUILayout.Button("Set", EditorStyles.miniButton, GUILayout.Width(32f)))
                 {
@@ -477,7 +477,7 @@ namespace UniPeek
             if (EditorGUI.EndChangeCheck())
             {
                 ConnectionManager.Instance.SetWebRtcMaxBitrate(newMbps * 1000);
-                EditorPrefs.SetInt(UniPeekConstants.PrefWebRtcMaxBitrateKbps, newMbps * 1000);
+                EditorPrefs.SetInt(GamePeekConstants.PrefWebRtcMaxBitrateKbps, newMbps * 1000);
             }
 
             GUILayout.Space(4f);
@@ -492,7 +492,7 @@ namespace UniPeek
             if (EditorGUI.EndChangeCheck())
             {
                 ConnectionManager.Instance.Config.WebRtcStunUrl = stunUrl?.Trim() ?? string.Empty;
-                EditorPrefs.SetString(UniPeekConstants.PrefWebRtcStunUrl, ConnectionManager.Instance.Config.WebRtcStunUrl);
+                EditorPrefs.SetString(GamePeekConstants.PrefWebRtcStunUrl, ConnectionManager.Instance.Config.WebRtcStunUrl);
             }
 #else
             using (new EditorGUILayout.HorizontalScope())
@@ -518,12 +518,12 @@ namespace UniPeek
             using (new EditorGUILayout.HorizontalScope())
             {
                 OptionLabel("Log Level",
-                    "Controls how much UniPeek writes to the Unity Console.\nNone: silent  |  Error: errors only  |  Warning: errors + warnings  |  All: full diagnostics.");
+                    "Controls how much GamePeek writes to the Unity Console.\nNone: silent  |  Error: errors only  |  Warning: errors + warnings  |  All: full diagnostics.");
                 _logLevel = (LogLevel)EditorGUILayout.EnumPopup(_logLevel, GUILayout.ExpandWidth(true));
             }
             if (EditorGUI.EndChangeCheck())
             {
-                UniPeekConstants.CurrentLogLevel = _logLevel;
+                GamePeekConstants.CurrentLogLevel = _logLevel;
                 SavePrefs();
             }
 
@@ -605,7 +605,7 @@ namespace UniPeek
             using (new EditorGUILayout.HorizontalScope())
             {
                 OptionLabel("Network Interface",
-                    "Which network adapter UniPeek binds to.\nUse Auto for most setups. Change this if UniPeek advertises a virtual adapter (e.g. VPN or Hyper-V).");
+                    "Which network adapter GamePeek binds to.\nUse Auto for most setups. Change this if GamePeek advertises a virtual adapter (e.g. VPN or Hyper-V).");
                 newIndex = EditorGUILayout.Popup(_nicIndex, _nicLabels, GUILayout.ExpandWidth(true));
             }
             if (EditorGUI.EndChangeCheck())
@@ -626,7 +626,7 @@ namespace UniPeek
             {
                 string bestIp = NetworkInterfaceSelector.GetBestIP();
                 EditorGUILayout.HelpBox(
-                    $"Auto-selected: {bestIp}  —  Change this if UniPeek advertises a virtual adapter address.",
+                    $"Auto-selected: {bestIp}  —  Change this if GamePeek advertises a virtual adapter address.",
                     MessageType.None);
             }
         }
@@ -668,7 +668,7 @@ namespace UniPeek
         private void DrawFooter()
         {
             GUILayout.Label(
-                "Pro features (multi-device, 1080p, 60 fps) unlocked via the UniPeek app.",
+                "Pro features (multi-device, 1080p, 60 fps) unlocked via the GamePeek app.",
                 EditorStyles.centeredGreyMiniLabel);
             GUILayout.Space(2f);
 
@@ -686,13 +686,13 @@ namespace UniPeek
             GUILayout.FlexibleSpace();
 
             if (GUILayout.Button("Welcome", EditorStyles.toolbarButton, GUILayout.Width(62f)))
-                UniPeekWelcomeWindow.Open();
+                GamePeekWelcomeWindow.Open();
 
             if (GUILayout.Button("Guide", EditorStyles.toolbarButton, GUILayout.Width(44f)))
-                UniPeekGuideWindow.Open();
+                GamePeekGuideWindow.Open();
 
             if (GUILayout.Button("Docs", EditorStyles.toolbarButton, GUILayout.Width(38f)))
-                Application.OpenURL("https://unipeek.app");
+                Application.OpenURL("https://gamepeek.app");
 
             if (GUILayout.Button("Reset FW", EditorStyles.toolbarButton, GUILayout.Width(58f)))
                 FirewallHelper.ResetAndReConfigure();
@@ -774,9 +774,9 @@ namespace UniPeek
         private static Color RttColor(float rttMs)
         {
             if (rttMs <= 0f)                          return ColGrey;
-            if (rttMs < UniPeekConstants.RttGreenMs)  return ColGreen;
-            if (rttMs < UniPeekConstants.RttYellowMs) return new Color(1f, 0.9f, 0f);
-            if (rttMs < UniPeekConstants.RttOrangeMs) return new Color(1f, 0.5f, 0f);
+            if (rttMs < GamePeekConstants.RttGreenMs)  return ColGreen;
+            if (rttMs < GamePeekConstants.RttYellowMs) return new Color(1f, 0.9f, 0f);
+            if (rttMs < GamePeekConstants.RttOrangeMs) return new Color(1f, 0.5f, 0f);
             return new Color(0.9f, 0.2f, 0.2f);
         }
 
@@ -854,7 +854,7 @@ namespace UniPeek
             {
                 _streaming = false;
                 EditorPrefs.DeleteKey(PrefPendingStart);
-                EditorPrefs.DeleteKey(UniPeekConstants.PrefPersistStreaming);
+                EditorPrefs.DeleteKey(GamePeekConstants.PrefPersistStreaming);
                 Repaint();
                 return;
             }
@@ -862,7 +862,7 @@ namespace UniPeek
             _streaming = true;
 
             if (!_requirePlayMode)
-                EditorPrefs.SetBool(UniPeekConstants.PrefPersistStreaming, true);
+                EditorPrefs.SetBool(GamePeekConstants.PrefPersistStreaming, true);
 
             Application.runInBackground = true;
             RefreshQR();
@@ -877,7 +877,7 @@ namespace UniPeek
             _autoStartedByPlayMode = false;
             _captureFps            = 0f;
             _encodeMs              = 0f;
-            EditorPrefs.DeleteKey(UniPeekConstants.PrefPersistStreaming);
+            EditorPrefs.DeleteKey(GamePeekConstants.PrefPersistStreaming);
             DestroyQR();
             Repaint();
         }
@@ -944,36 +944,36 @@ namespace UniPeek
         // crash can lose the last write. The editor name is also written to a file
         // so it survives crashes (file I/O is synchronous / immediately flushed).
         private static readonly string EditorNameFilePath =
-            System.IO.Path.Combine("UserSettings", "UniPeekEditorName.txt");
+            System.IO.Path.Combine("UserSettings", "GamePeekEditorName.txt");
 
         private void LoadPrefs()
         {
-            _requirePlayMode     = EditorPrefs.GetBool(UniPeekConstants.PrefAutoStopPlay, true);
-            _autoStartOnPlayMode = EditorPrefs.GetBool(UniPeekConstants.PrefAutoStartOnPlay, false);
-            _socketMode          = (SocketMode)EditorPrefs.GetInt(UniPeekConstants.PrefSocketMode, (int)SocketMode.WebRTC);
-            _logLevel            = (LogLevel)EditorPrefs.GetInt(UniPeekConstants.PrefLogLevel, (int)LogLevel.All);
-            _port                = EditorPrefs.GetInt(UniPeekConstants.PrefPort, UniPeekConstants.DefaultPort);
-            UniPeekConstants.CurrentLogLevel = _logLevel;
+            _requirePlayMode     = EditorPrefs.GetBool(GamePeekConstants.PrefAutoStopPlay, true);
+            _autoStartOnPlayMode = EditorPrefs.GetBool(GamePeekConstants.PrefAutoStartOnPlay, false);
+            _socketMode          = (SocketMode)EditorPrefs.GetInt(GamePeekConstants.PrefSocketMode, (int)SocketMode.WebRTC);
+            _logLevel            = (LogLevel)EditorPrefs.GetInt(GamePeekConstants.PrefLogLevel, (int)LogLevel.All);
+            _port                = EditorPrefs.GetInt(GamePeekConstants.PrefPort, GamePeekConstants.DefaultPort);
+            GamePeekConstants.CurrentLogLevel = _logLevel;
             ConnectionManager.Instance.Config.MaxBitrateKbps = EditorPrefs.GetInt(
-                UniPeekConstants.PrefWebRtcMaxBitrateKbps, UniPeekConstants.DefaultWebRtcMaxBitrateKbps);
+                GamePeekConstants.PrefWebRtcMaxBitrateKbps, GamePeekConstants.DefaultWebRtcMaxBitrateKbps);
             ConnectionManager.Instance.Config.WebRtcStunUrl = EditorPrefs.GetString(
-                UniPeekConstants.PrefWebRtcStunUrl, string.Empty);
+                GamePeekConstants.PrefWebRtcStunUrl, string.Empty);
 
             // File takes priority — it's written synchronously so it's crash-safe.
             if (System.IO.File.Exists(EditorNameFilePath))
                 _editorName = System.IO.File.ReadAllText(EditorNameFilePath);
             else
-                _editorName = EditorPrefs.GetString(UniPeekConstants.PrefEditorName, string.Empty);
+                _editorName = EditorPrefs.GetString(GamePeekConstants.PrefEditorName, string.Empty);
         }
 
         private void SavePrefs()
         {
-            EditorPrefs.SetBool(UniPeekConstants.PrefAutoStopPlay, _requirePlayMode);
-            EditorPrefs.SetBool(UniPeekConstants.PrefAutoStartOnPlay, _autoStartOnPlayMode);
-            EditorPrefs.SetInt(UniPeekConstants.PrefSocketMode, (int)_socketMode);
-            EditorPrefs.SetInt(UniPeekConstants.PrefLogLevel, (int)_logLevel);
-            EditorPrefs.SetString(UniPeekConstants.PrefEditorName, _editorName);
-            EditorPrefs.SetInt(UniPeekConstants.PrefPort, _port);
+            EditorPrefs.SetBool(GamePeekConstants.PrefAutoStopPlay, _requirePlayMode);
+            EditorPrefs.SetBool(GamePeekConstants.PrefAutoStartOnPlay, _autoStartOnPlayMode);
+            EditorPrefs.SetInt(GamePeekConstants.PrefSocketMode, (int)_socketMode);
+            EditorPrefs.SetInt(GamePeekConstants.PrefLogLevel, (int)_logLevel);
+            EditorPrefs.SetString(GamePeekConstants.PrefEditorName, _editorName);
+            EditorPrefs.SetInt(GamePeekConstants.PrefPort, _port);
 
             // Also write to file for crash resilience.
             try

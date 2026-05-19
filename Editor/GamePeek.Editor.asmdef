@@ -1,6 +1,6 @@
-{
-    "name": "UniPeek.Editor",
-    "rootNamespace": "UniPeek",
+﻿{
+    "name": "GamePeek.Editor",
+    "rootNamespace": "GamePeek",
     "references": [
         "GUID:75469ad4d38634e559750d17036d5f7c",
         "GUID:478a2357cc57436488a56e564b08d223",

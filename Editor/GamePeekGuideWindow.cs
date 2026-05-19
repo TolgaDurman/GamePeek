@@ -1,12 +1,12 @@
-using System.IO;
+﻿using System.IO;
 using UnityEditor;
 using UnityEngine;
 
-namespace UniPeek
+namespace GamePeek
 {
-    internal sealed class UniPeekGuideWindow : EditorWindow
+    internal sealed class GamePeekGuideWindow : EditorWindow
     {
-        private const string ManualPath = "Assets/Plugins/UniPeek/MANUAL.md";
+        private const string ManualPath = "Assets/Plugins/GamePeek/MANUAL.md";
 
         private Vector2 _scrollPos;
         private string _manualText;
@@ -15,10 +15,10 @@ namespace UniPeek
         private GUIStyle _codeStyle;
         private bool _stylesInitialized;
 
-        [MenuItem("Window/UniPeek/Guide")]
+        [MenuItem("Window/GamePeek/Guide")]
         public static void Open()
         {
-            var window = GetWindow<UniPeekGuideWindow>(utility: false, title: "UniPeek Guide", focus: true);
+            var window = GetWindow<GamePeekGuideWindow>(utility: false, title: "GamePeek Guide", focus: true);
             window.minSize = new Vector2(420f, 520f);
             window.LoadManual();
         }
@@ -31,7 +31,7 @@ namespace UniPeek
 
             using (new EditorGUILayout.HorizontalScope(EditorStyles.toolbar))
             {
-                GUILayout.Label("UniPeek Guide", EditorStyles.boldLabel);
+                GUILayout.Label("GamePeek Guide", EditorStyles.boldLabel);
                 GUILayout.FlexibleSpace();
 
                 if (GUILayout.Button("Open Markdown", EditorStyles.toolbarButton, GUILayout.Width(96f)))

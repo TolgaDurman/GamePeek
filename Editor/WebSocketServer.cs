@@ -1,10 +1,10 @@
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using WebSocketSharp;
 using WebSocketSharp.Server;
 
-namespace UniPeek
+namespace GamePeek
 {
     // ── Incoming message POCOs (deserialized from phone JSON) ─────────────────
 
@@ -102,9 +102,9 @@ namespace UniPeek
     /// <summary>
     /// Per-connection WebSocket behaviour class consumed by websocket-sharp.
     /// Routes incoming text messages to the static event handlers on
-    /// <see cref="UniPeekWebSocketServer"/> via thread-safe static events.
+    /// <see cref="GamePeekWebSocketServer"/> via thread-safe static events.
     /// </summary>
-    internal class UniPeekBehavior : WebSocketBehavior
+    internal class GamePeekBehavior : WebSocketBehavior
     {
         // Static events so ConnectionManager can subscribe without holding a
         // reference to individual behaviour instances.
@@ -132,7 +132,7 @@ namespace UniPeek
 
         protected override void OnError(WebSocketSharp.ErrorEventArgs e)
         {
-            UniPeekConstants.LogWarning($"[WS] Client {ID} error: {e.Message}");
+            GamePeekConstants.LogWarning($"[WS] Client {ID} error: {e.Message}");
         }
 
         /// <summary>Sends a text message to THIS specific client session.</summary>
@@ -143,7 +143,7 @@ namespace UniPeek
 
     /// <summary>
     /// Wraps a <c>websocket-sharp</c> <see cref="WebSocketSharp.Server.WebSocketServer"/>
-    /// and exposes a clean API for the rest of UniPeek.
+    /// and exposes a clean API for the rest of GamePeek.
     /// <para>
     /// <b>Thread safety:</b> <see cref="BroadcastFrame"/> and
     /// <see cref="SendToSession"/> may be called from any thread.
@@ -152,7 +152,7 @@ namespace UniPeek
     /// (see <see cref="ConnectionManager"/>).
     /// </para>
     /// </summary>
-    public sealed class UniPeekWebSocketServer : IDisposable
+    public sealed class GamePeekWebSocketServer : IDisposable
     {
         // ── Events (raised on websocket-sharp background threads) ─────────────
 
@@ -202,7 +202,7 @@ namespace UniPeek
         // ── Constructor ───────────────────────────────────────────────────────
         /// <summary>Creates the server wrapper. Call <see cref="Start"/> to bind the socket.</summary>
         /// <param name="port">TCP port to listen on (default 7777).</param>
-        public UniPeekWebSocketServer(int port = UniPeekConstants.DefaultPort) => _port = port;
+        public GamePeekWebSocketServer(int port = GamePeekConstants.DefaultPort) => _port = port;
 
         // ── Public API ─────────────────────────────────────────────────────────
 
@@ -214,7 +214,7 @@ namespace UniPeek
             try
             {
                 _server = new WebSocketSharp.Server.WebSocketServer(_port);
-                _server.AddWebSocketService<UniPeekBehavior>("/");
+                _server.AddWebSocketService<GamePeekBehavior>("/");
                 HookBehaviorEvents();
                 _server.Start();
                 _running = true;
@@ -225,7 +225,7 @@ namespace UniPeek
                 throw;
             }
 
-            UniPeekConstants.Log($"[WS] Server listening on port {_port}.");
+            GamePeekConstants.Log($"[WS] Server listening on port {_port}.");
         }
 
         /// <summary>Broadcasts a raw JPEG frame to all connected clients as a binary message.</summary>
@@ -258,7 +258,7 @@ namespace UniPeek
             }
             catch (Exception ex)
             {
-                UniPeekConstants.LogWarning($"[WS] SendToSession failed: {ex.Message}");
+                GamePeekConstants.LogWarning($"[WS] SendToSession failed: {ex.Message}");
             }
         }
 
@@ -292,24 +292,24 @@ namespace UniPeek
             }
             catch (Exception ex)
             {
-                UniPeekConstants.LogWarning($"[WS] Server stop failed: {ex.Message}");
+                GamePeekConstants.LogWarning($"[WS] Server stop failed: {ex.Message}");
             }
 
             _server = null;
-            UniPeekConstants.Log("[WS] Server stopped.");
+            GamePeekConstants.Log("[WS] Server stopped.");
         }
 
         private void HookBehaviorEvents()
         {
             if (_eventsHooked) return;
 
-            UniPeekBehavior.OnClientConnected    -= HandleConnect;
-            UniPeekBehavior.OnClientDisconnected -= HandleDisconnect;
-            UniPeekBehavior.OnTextMessage        -= HandleTextMessage;
+            GamePeekBehavior.OnClientConnected    -= HandleConnect;
+            GamePeekBehavior.OnClientDisconnected -= HandleDisconnect;
+            GamePeekBehavior.OnTextMessage        -= HandleTextMessage;
 
-            UniPeekBehavior.OnClientConnected    += HandleConnect;
-            UniPeekBehavior.OnClientDisconnected += HandleDisconnect;
-            UniPeekBehavior.OnTextMessage        += HandleTextMessage;
+            GamePeekBehavior.OnClientConnected    += HandleConnect;
+            GamePeekBehavior.OnClientDisconnected += HandleDisconnect;
+            GamePeekBehavior.OnTextMessage        += HandleTextMessage;
 
             _eventsHooked = true;
         }
@@ -318,9 +318,9 @@ namespace UniPeek
         {
             if (!_eventsHooked) return;
 
-            UniPeekBehavior.OnClientConnected    -= HandleConnect;
-            UniPeekBehavior.OnClientDisconnected -= HandleDisconnect;
-            UniPeekBehavior.OnTextMessage        -= HandleTextMessage;
+            GamePeekBehavior.OnClientConnected    -= HandleConnect;
+            GamePeekBehavior.OnClientDisconnected -= HandleDisconnect;
+            GamePeekBehavior.OnTextMessage        -= HandleTextMessage;
 
             _eventsHooked = false;
         }
@@ -340,7 +340,7 @@ namespace UniPeek
         {
             if (string.IsNullOrWhiteSpace(json)) return;
 
-            UniPeekConstants.Log($"[WS] Received: {json}");
+            GamePeekConstants.Log($"[WS] Received: {json}");
 
             try
             {
@@ -400,13 +400,13 @@ namespace UniPeek
                         break;
 
                     default:
-                        UniPeekConstants.LogWarning($"[WS] Unknown message type: {baseMsg.type}");
+                        GamePeekConstants.LogWarning($"[WS] Unknown message type: {baseMsg.type}");
                         break;
                 }
             }
             catch (Exception ex)
             {
-                UniPeekConstants.LogWarning($"[WS] Failed to parse message: {ex.Message}\n{json}");
+                GamePeekConstants.LogWarning($"[WS] Failed to parse message: {ex.Message}\n{json}");
             }
         }
     }

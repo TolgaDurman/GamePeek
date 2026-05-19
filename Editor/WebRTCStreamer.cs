@@ -1,4 +1,4 @@
-// Entire file is compiled only when com.unity.webrtc is present in the project.
+﻿// Entire file is compiled only when com.unity.webrtc is present in the project.
 #if UNITY_WEBRTC
 
 using System;
@@ -11,7 +11,7 @@ using Unity.WebRTC;
 using UnityEditor;
 using UnityEngine;
 
-namespace UniPeek
+namespace GamePeek
 {
     /// <summary>
     /// Manages a single WebRTC peer connection that streams the Unity Game View
@@ -105,7 +105,7 @@ namespace UniPeek
         /// <param name="fpsCap">Maximum capture rate (frames/second). Defaults to 30.</param>
         /// <param name="maxBitrateKbps">Maximum video bitrate in kbps. Defaults to 10 000 (10 Mbps).</param>
         public WebRTCStreamer(int width = 1280, int height = 720, int fpsCap = 30,
-                              int maxBitrateKbps = UniPeekConstants.DefaultWebRtcMaxBitrateKbps,
+                              int maxBitrateKbps = GamePeekConstants.DefaultWebRtcMaxBitrateKbps,
                               string stunUrl = "")
         {
             _width           = width;
@@ -148,7 +148,7 @@ namespace UniPeek
                     : new[] { new RTCIceServer { urls = new[] { _stunUrl } } },
             };
             if (!string.IsNullOrEmpty(_stunUrl))
-                UniPeekConstants.Log($"[WebRTC] Using STUN server: {_stunUrl}");
+                GamePeekConstants.Log($"[WebRTC] Using STUN server: {_stunUrl}");
 
             _pc = new RTCPeerConnection(ref config);
             _pc.OnIceCandidate          = OnIceCandidate;
@@ -183,14 +183,14 @@ namespace UniPeek
                     _audioTrack = new AudioStreamTrack(listener);
                     _mediaStream.AddTrack(_audioTrack);
                     _pc.AddTrack(_audioTrack, _mediaStream);
-                    UniPeekConstants.Log("[WebRTC] Audio track added.");
+                    GamePeekConstants.Log("[WebRTC] Audio track added.");
                 }
                 else
-                    UniPeekConstants.LogWarning("[WebRTC] No AudioListener found — audio not streamed.");
+                    GamePeekConstants.LogWarning("[WebRTC] No AudioListener found — audio not streamed.");
             }
             catch (Exception ex)
             {
-                UniPeekConstants.LogWarning($"[WebRTC] Audio track setup failed, continuing without audio: {ex.Message}");
+                GamePeekConstants.LogWarning($"[WebRTC] Audio track setup failed, continuing without audio: {ex.Message}");
             }
 
             // ── Data channel (input messages from Flutter) ────────────────────
@@ -312,7 +312,7 @@ namespace UniPeek
                 _renderTexture = null;
             }
 
-            UniPeekConstants.Log("[WebRTC] Streamer disposed.");
+            GamePeekConstants.Log("[WebRTC] Streamer disposed.");
         }
 
         private void HookMainThreadQueue()
@@ -340,7 +340,7 @@ namespace UniPeek
             while (!_disposed && _mainThreadActions.TryDequeue(out var action))
             {
                 try { action(); }
-                catch (Exception ex) { UniPeekConstants.LogError($"[WebRTC] Main-thread action failed: {ex}"); }
+                catch (Exception ex) { GamePeekConstants.LogError($"[WebRTC] Main-thread action failed: {ex}"); }
             }
         }
 
@@ -403,7 +403,7 @@ namespace UniPeek
 
                 if (_captureHelper == null)
                 {
-                    var go = new GameObject("[UniPeek] WebRTCCapture")
+                    var go = new GameObject("[GamePeek] WebRTCCapture")
                         { hideFlags = HideFlags.HideAndDontSave };
                     _captureHelper         = go.AddComponent<CaptureHelper>();
                     _captureHelper.OnFrame = OnCaptureFrame;
@@ -506,7 +506,7 @@ namespace UniPeek
 
             if (offerOp.IsError)
             {
-                UniPeekConstants.LogError($"[WebRTC] CreateOffer error: {offerOp.Error.message}");
+                GamePeekConstants.LogError($"[WebRTC] CreateOffer error: {offerOp.Error.message}");
                 yield break;
             }
             if (_disposed || _pc == null) yield break;
@@ -517,12 +517,12 @@ namespace UniPeek
 
             if (setLocalOp.IsError)
             {
-                UniPeekConstants.LogError($"[WebRTC] SetLocalDescription error: {setLocalOp.Error.message}");
+                GamePeekConstants.LogError($"[WebRTC] SetLocalDescription error: {setLocalOp.Error.message}");
                 yield break;
             }
             if (_disposed || _pc == null) yield break;
 
-            UniPeekConstants.Log("[WebRTC] Offer created, sending to Flutter.");
+            GamePeekConstants.Log("[WebRTC] Offer created, sending to Flutter.");
             OfferReady?.Invoke(offerOp.Desc.sdp);
         }
 
@@ -535,11 +535,11 @@ namespace UniPeek
 
             if (op.IsError)
             {
-                UniPeekConstants.LogError($"[WebRTC] SetRemoteDescription error: {op.Error.message}");
+                GamePeekConstants.LogError($"[WebRTC] SetRemoteDescription error: {op.Error.message}");
             }
             else
             {
-                UniPeekConstants.Log("[WebRTC] Remote answer accepted.");
+                GamePeekConstants.Log("[WebRTC] Remote answer accepted.");
                 _remoteDescriptionSet = true;
                 ApplyBitrateSettings();
                 // Drain ICE candidates that arrived before the answer was processed.
@@ -564,7 +564,7 @@ namespace UniPeek
         private void OnIceConnectionChange(RTCIceConnectionState state)
         {
             if (_disposed) return;
-            UniPeekConstants.Log($"[WebRTC] ICE state → {state}");
+            GamePeekConstants.Log($"[WebRTC] ICE state → {state}");
             switch (state)
             {
                 case RTCIceConnectionState.Connected:
@@ -590,7 +590,7 @@ namespace UniPeek
         private void NotifyDisconnected(string reason)
         {
             if (_disposed) return;
-            UniPeekConstants.LogWarning($"[WebRTC] {reason} Falling back to JPEG.");
+            GamePeekConstants.LogWarning($"[WebRTC] {reason} Falling back to JPEG.");
             Disconnected?.Invoke();
         }
 
@@ -617,20 +617,20 @@ namespace UniPeek
                 else
                 {
                     failedSenders++;
-                    UniPeekConstants.LogWarning($"[WebRTC] Failed to set video bitrate: {error.message}");
+                    GamePeekConstants.LogWarning($"[WebRTC] Failed to set video bitrate: {error.message}");
                 }
             }
 
             if (updatedSenders > 0)
-                UniPeekConstants.Log($"[WebRTC] Bitrate cap set to {_maxBitrateKbps} kbps on {updatedSenders} sender(s).");
+                GamePeekConstants.Log($"[WebRTC] Bitrate cap set to {_maxBitrateKbps} kbps on {updatedSenders} sender(s).");
             else if (failedSenders == 0)
-                UniPeekConstants.LogWarning("[WebRTC] Bitrate cap was not applied because no RTP sender encodings were available.");
+                GamePeekConstants.LogWarning("[WebRTC] Bitrate cap was not applied because no RTP sender encodings were available.");
         }
 
         private void OnConnectionStateChange(RTCPeerConnectionState state)
         {
             if (_disposed) return;
-            UniPeekConstants.Log($"[WebRTC] PC state → {state}");
+            GamePeekConstants.Log($"[WebRTC] PC state → {state}");
         }
 
         private void OnRemoteDataChannel(RTCDataChannel channel)

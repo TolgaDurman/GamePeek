@@ -1,4 +1,4 @@
-# UniPeek — User Manual
+﻿# GamePeek — User Manual
 
 Stream your Unity Game View live to your iOS or Android phone over Wi-Fi.
 
@@ -6,17 +6,17 @@ Stream your Unity Game View live to your iOS or Android phone over Wi-Fi.
 
 ## What You Need
 
-- A phone with the **UniPeek** companion app installed (iOS or Android)
+- A phone with the **GamePeek** companion app installed (iOS or Android)
 - Both your PC/Mac and phone on the **same Wi-Fi network**
 - Unity 2021.3 or newer
 
 ---
 
-## Opening the UniPeek Window
+## Opening the GamePeek Window
 
-Go to **Window → UniPeek** in the Unity menu bar.
+Go to **Window → GamePeek** in the Unity menu bar.
 
-The UniPeek window can be docked anywhere in your editor layout like any other Unity panel.
+The GamePeek window can be docked anywhere in your editor layout like any other Unity panel.
 
 ---
 
@@ -24,16 +24,16 @@ The UniPeek window can be docked anywhere in your editor layout like any other U
 
 ### Option 1 — QR Code (easiest)
 
-1. Click **Start Streaming** in the UniPeek window.
+1. Click **Start Streaming** in the GamePeek window.
 2. A QR code appears in the window.
-3. Open the UniPeek app on your phone and tap **Scan QR**.
+3. Open the GamePeek app on your phone and tap **Scan QR**.
 4. Point the camera at the QR code.
 5. The dot in the window turns green — you are connected.
 
 ### Option 2 — Auto-Discovery (mDNS)
 
-UniPeek broadcasts its presence on the local network automatically.
-In the UniPeek app, tap **Browse** and your machine name will appear in the list. Tap it to connect.
+GamePeek broadcasts its presence on the local network automatically.
+In the GamePeek app, tap **Browse** and your machine name will appear in the list. Tap it to connect.
 
 No QR code needed. Both devices must be on the same subnet.
 
@@ -43,7 +43,7 @@ No QR code needed. Both devices must be on the same subnet.
 
 Use this when your phone cannot reach your PC (hotel Wi-Fi, corporate network with client isolation).
 
-1. In the UniPeek app, switch to **Listen** mode.
+1. In the GamePeek app, switch to **Listen** mode.
 2. In Unity, click **Start Streaming**, then expand the **Reverse Connection** section.
 3. Enter your phone's IP address and click **Connect to Phone**.
 4. The editor dials out to the phone on port **7778**.
@@ -79,7 +79,7 @@ adb reverse tcp:7777 tcp:7777
 
 ### Editor Name
 
-Sets the display name shown in the UniPeek app's device list. Defaults to your machine name.
+Sets the display name shown in the GamePeek app's device list. Defaults to your machine name.
 Type a name and click **Set** to save it.
 
 ### Socket Mode
@@ -93,7 +93,7 @@ Selects the streaming transport:
 
 The WebRTC option only appears if the `com.unity.webrtc` package is installed.
 
-WebRTC mode runs in Play Mode and captures the composited Game View at end-of-frame, preserving Screen Space Overlay canvases and UniPeek touch gizmos. The optional **STUN URL** setting can help on VPNs, hotspots, or unusual subnet setups; leave it empty for local-only LAN behavior.
+WebRTC mode runs in Play Mode and captures the composited Game View at end-of-frame, preserving Screen Space Overlay canvases and GamePeek touch gizmos. The optional **STUN URL** setting can help on VPNs, hotspots, or unusual subnet setups; leave it empty for local-only LAN behavior.
 
 ### Run in Play Mode
 
@@ -112,7 +112,7 @@ Switch between them at any time; the change takes effect on the next captured fr
 
 ### Log Level
 
-Controls how much UniPeek writes to the Unity Console:
+Controls how much GamePeek writes to the Unity Console:
 
 | Level | Output |
 | --- | --- |
@@ -125,7 +125,7 @@ Controls how much UniPeek writes to the Unity Console:
 
 ## Touch Input
 
-UniPeek injects touch into **every active input backend** simultaneously:
+GamePeek injects touch into **every active input backend** simultaneously:
 
 | Backend | How it works | Reliability |
 | --- | --- | --- |
@@ -136,31 +136,31 @@ The active backend is controlled by **Edit → Project Settings → Player → A
 
 - **Input System Package (New)** — only the new Input System path runs.
 - **Input Manager (Old)** — only the Legacy reflection path runs.
-- **Both** — UniPeek injects into both systems at the same time. This is the recommended setting when your project uses a mix of old and new Input APIs.
+- **Both** — GamePeek injects into both systems at the same time. This is the recommended setting when your project uses a mix of old and new Input APIs.
 
-UniPeek delivers touches through two additional channels regardless of backend:
+GamePeek delivers touches through two additional channels regardless of backend:
 
 | Channel | Class / API |
 | --- | --- |
-| **UniPeekInput events** | `UniPeekInput.OnTouch` / `OnTouchDetailed` |
+| **GamePeekInput events** | `GamePeekInput.OnTouch` / `OnTouchDetailed` |
 | **Unity Input System polling** | `ETouch.activeTouches`, `Touchscreen.current`, etc. (requires new Input System) |
 
 Touch overlays (semi-transparent circles) are drawn on the Game View automatically while touches are active.
 
 > **Multi-touch, gyroscope, and accelerometer** are **Pro** features. Free tier receives single touch only.
 
-### UniPeekInput
+### GamePeekInput
 
-`UniPeekInput` is a lightweight static event bus. UniPeek fires its events on the main thread for every touch that arrives from the phone.
+`GamePeekInput` is a lightweight static event bus. GamePeek fires its events on the main thread for every touch that arrives from the phone.
 
 ```csharp
-using UniPeek;
+using GamePeek;
 using UnityEngine;
 
 public class Example : MonoBehaviour
 {
-    void OnEnable()  => UniPeekInput.OnTouch += HandleTouch;
-    void OnDisable() => UniPeekInput.OnTouch -= HandleTouch;
+    void OnEnable()  => GamePeekInput.OnTouch += HandleTouch;
+    void OnDisable() => GamePeekInput.OnTouch -= HandleTouch;
 
     void HandleTouch(Vector2 normalizedPos)
     {
@@ -178,21 +178,21 @@ public class Example : MonoBehaviour
 Use this when you need the finger ID or phase string:
 
 ```csharp
-UniPeekInput.OnTouchDetailed += (fingerId, phase, normalizedPos) =>
+GamePeekInput.OnTouchDetailed += (fingerId, phase, normalizedPos) =>
 {
     // phase: "began" | "moved" | "ended" | "canceled"
     Debug.Log($"Finger {fingerId} {phase} at {normalizedPos}");
 };
 ```
 
-#### When to use UniPeekInput
+#### When to use GamePeekInput
 
 - You want a simple callback without dealing with the Input System device layer.
 - You need to react to individual touch events (e.g. "tap began") rather than polling state every frame.
 
 ### New Input System integration
 
-When `com.unity.inputsystem` is installed, UniPeek automatically injects all touches into a virtual `Touchscreen` device. You can read them using any standard Input System API.
+When `com.unity.inputsystem` is installed, GamePeek automatically injects all touches into a virtual `Touchscreen` device. You can read them using any standard Input System API.
 
 #### Single touch — polling
 
@@ -238,16 +238,16 @@ void Update()
 
 #### Coordinate system
 
-UniPeek's phone sends **normalised** coordinates where `(0, 0)` is the **top-left** of the screen. Unity's Input System uses **screen pixels** where `(0, 0)` is the **bottom-left**.
+GamePeek's phone sends **normalised** coordinates where `(0, 0)` is the **top-left** of the screen. Unity's Input System uses **screen pixels** where `(0, 0)` is the **bottom-left**.
 
-UniPeek applies the conversion automatically before injecting into the Input System:
+GamePeek applies the conversion automatically before injecting into the Input System:
 
 ```text
 screenX = normalizedX × Screen.width
 screenY = (1 − normalizedY) × Screen.height   // Y-flip
 ```
 
-When reading via `UniPeekInput`, the coordinates are still in the raw normalised form (Y = 0 at top). Apply the same flip yourself when converting to screen or world space.
+When reading via `GamePeekInput`, the coordinates are still in the raw normalised form (Y = 0 at top). Apply the same flip yourself when converting to screen or world space.
 
 ### Pinch-to-scale example
 
@@ -303,8 +303,8 @@ void Update()
 
 | What you want | Recommended API | Tier |
 | --- | --- | --- |
-| Simple tap callback | `UniPeekInput.OnTouch` | Free + Pro |
-| Phase + finger ID | `UniPeekInput.OnTouchDetailed` | Free + Pro |
+| Simple tap callback | `GamePeekInput.OnTouch` | Free + Pro |
+| Phase + finger ID | `GamePeekInput.OnTouchDetailed` | Free + Pro |
 | Single-touch polling | `Touchscreen.current.primaryTouch` | Free + Pro |
 | Multi-touch / pinch | `ETouch.activeTouches` (Enhanced Touch) | Pro |
 
@@ -338,14 +338,14 @@ if (attitude != null)
 
 ## Windows Firewall
 
-On first launch, UniPeek asks for a one-time UAC (administrator) prompt to add a Windows Firewall rule allowing inbound connections on port **7777**. Without this, the phone cannot reach the editor.
+On first launch, GamePeek asks for a one-time UAC (administrator) prompt to add a Windows Firewall rule allowing inbound connections on port **7777**. Without this, the phone cannot reach the editor.
 
 If you declined the prompt or the rule was removed, click **Reset FW** in the toolbar and then **Start Streaming** again to re-run the setup.
 
 If you prefer to add the rule manually, run this in an elevated PowerShell:
 
 ```powershell
-New-NetFirewallRule -DisplayName "UniPeek" -Direction Inbound -Action Allow -Protocol TCP -LocalPort 7777 -Profile Any
+New-NetFirewallRule -DisplayName "GamePeek" -Direction Inbound -Action Allow -Protocol TCP -LocalPort 7777 -Profile Any
 ```
 
 ---
@@ -358,7 +358,7 @@ New-NetFirewallRule -DisplayName "UniPeek" -Direction Inbound -Action Allow -Pro
 | Phone can't find the host via Browse | Both must be on the same subnet. Some guest/corporate Wi-Fi blocks device-to-device traffic — try the QR code or Reverse Connection mode instead. |
 | Firewall prompt never appeared / connections fail | Click **Reset FW** in the toolbar, then **Start Streaming** again. |
 | Stream is black or frozen | Make sure there is at least one camera tagged `MainCamera` in your scene. In Edit Mode, `Camera.main` must exist. |
-| Touch events are not registering | Check **Edit → Project Settings → Player → Active Input Handling**. If using Legacy only, UniPeek injects via reflection (best-effort). For reliable injection, install `com.unity.inputsystem` and set Active Input Handling to **Input System Package** or **Both**. |
+| Touch events are not registering | Check **Edit → Project Settings → Player → Active Input Handling**. If using Legacy only, GamePeek injects via reflection (best-effort). For reliable injection, install `com.unity.inputsystem` and set Active Input Handling to **Input System Package** or **Both**. |
 | Touch works but UI / Canvas buttons don't respond | Your Canvas is still using the old **Standalone Input Module**. Select the **EventSystem** in your scene and replace the Standalone Input Module component with **Input System UI Input Module** (`UnityEngine.InputSystem.UI.InputSystemUIInputModule`). |
 | High latency or choppy video | Lower the quality setting in the app, switch to **Async GPU Readback**, or reduce resolution to 540p. |
 | Stream drops on recompile | Disable **Run in Play Mode** to allow the stream to persist across domain reloads. |
@@ -370,5 +370,5 @@ New-NetFirewallRule -DisplayName "UniPeek" -Direction Inbound -Action Allow -Pro
 
 | Port | Purpose |
 | --- | --- |
-| **7777** | UniPeek WebSocket server (phone → editor, configurable) |
+| **7777** | GamePeek WebSocket server (phone → editor, configurable) |
 | **7778** | Reverse connection (editor → phone in Listen mode, fixed) |

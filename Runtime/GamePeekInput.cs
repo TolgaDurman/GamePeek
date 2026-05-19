@@ -1,13 +1,13 @@
-using System;
+﻿using System;
 using UnityEngine;
 
-namespace UniPeek
+namespace GamePeek
 {
     /// <summary>
-    /// Runtime bridge for receiving touch events from the UniPeek companion app.
+    /// Runtime bridge for receiving touch events from the GamePeek companion app.
     /// Subscribe to <see cref="OnTouch"/> from any MonoBehaviour to react to phone touches.
     /// </summary>
-    public static class UniPeekInput
+    public static class GamePeekInput
     {
         /// <summary>
         /// Fired on the main thread whenever a touch event arrives from the phone.

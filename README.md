@@ -1,6 +1,6 @@
-# UniPeek — Unity Editor Plugin
+﻿# GamePeek — Unity Editor Plugin
 
-Stream the Unity Game View to the **UniPeek app** on your iOS or Android device in real-time over a local Wi-Fi network.
+Stream the Unity Game View to the **GamePeek app** on your iOS or Android device in real-time over a local Wi-Fi network.
 
 ---
 
@@ -42,7 +42,7 @@ Requires **.NET Standard 2.1** API Compatibility Level (`Edit → Project Settin
 
 - **Legacy Input Manager** — single touch works via internal reflection (`Input.SimulateTouch`). Best-effort; gyroscope and accelerometer are not available.
 - **New Input System** (`com.unity.inputsystem`) — full touch, multi-touch, gyroscope, and accelerometer injection via virtual devices. Recommended.
-- **Both** — UniPeek injects into both backends simultaneously.
+- **Both** — GamePeek injects into both backends simultaneously.
 
 **Optional:**
 
@@ -54,17 +54,17 @@ Requires **.NET Standard 2.1** API Compatibility Level (`Edit → Project Settin
 
 ### 1 — Install the plugin
 
-Download the latest `.unitypackage` from the [Releases page](https://github.com/TolgaDurman/UniPeek/releases/latest) and import it into your project via **Assets → Import Package → Custom Package**.
+Download the latest `.unitypackage` from the [Releases page](https://github.com/TolgaDurman/GamePeek/releases/latest) and import it into your project via **Assets → Import Package → Custom Package**.
 
 ### 2 — Open the window
 
 ```text
-Unity menu → Window → UniPeek
+Unity menu → Window → GamePeek
 ```
 
 ## Windows
 
-> On first launch on Windows, UniPeek will prompt for a one-time UAC elevation to add a Windows Firewall inbound rule for TCP port 7777.
+> On first launch on Windows, GamePeek will prompt for a one-time UAC elevation to add a Windows Firewall inbound rule for TCP port 7777.
 
 ## macOS & Linux
 
@@ -74,10 +74,10 @@ Unity menu → Window → UniPeek
 
 ## Quick-start: Pairing via QR Code
 
-1. Open the **UniPeek** window (`Window → UniPeek`).
+1. Open the **GamePeek** window (`Window → GamePeek`).
 2. Click **▶ Start Streaming**.
    A QR code appears showing the local IP and port.
-3. Open the **UniPeek** companion app on your phone.
+3. Open the **GamePeek** companion app on your phone.
 4. Tap **Scan QR** and point the camera at the QR code.
 5. The connection indicator in the Editor turns green; the phone now shows the live Game View.
 
@@ -98,7 +98,7 @@ Both the Unity host and the phone must be on the **same Wi-Fi network** (or the 
 
 Use this when your phone cannot reach the PC (hotel Wi-Fi, corporate networks with client isolation, no shared Wi-Fi):
 
-1. In the UniPeek app, switch to **Listen** mode.
+1. In the GamePeek app, switch to **Listen** mode.
 2. In Unity, click **▶ Start Streaming**, then expand the **Reverse Connection** panel.
 3. Enter your phone's IP address and click **Connect to Phone**.
 4. The editor dials out to the phone on port **7778**.
@@ -127,7 +127,7 @@ Then connect the app to `localhost:7777`.
 | **STUN URL** | Text field | Optional WebRTC STUN server for VPNs, hotspots, or unusual subnet setups. Leave empty for local-only LAN behavior. |
 | **Run in Play Mode** | On / Off | **On:** streaming only runs while the Editor is in Play Mode. **Off:** streaming runs in both Edit and Play Mode (stream will briefly drop on domain reloads). |
 | **Capture Method** | Camera Render / Async GPU Readback | Camera Render is synchronous. Async GPU Readback reduces main-thread stall at the cost of ~1 frame of extra latency. |
-| **Log Level** | None / Error / Warning / All | Console verbosity for UniPeek diagnostic messages. |
+| **Log Level** | None / Error / Warning / All | Console verbosity for GamePeek diagnostic messages. |
 | **Port** | Integer (default 7777) | TCP port the WebSocket server listens on. Only editable when not streaming. |
 
 WebRTC mode requires Play Mode and captures the composited Game View at end-of-frame so Screen Space Overlay canvases remain visible. Direct camera capture is intentionally not used for WebRTC because it can miss overlay UI.
@@ -172,7 +172,7 @@ Touch `x`/`y` are normalised [0, 1]; `x=0` is the left edge, `y=0` is the **top*
 
 ### New Input System (required)
 
-Input injection requires `com.unity.inputsystem`. UniPeek creates virtual devices and injects events via `InputSystem.QueueStateEvent`:
+Input injection requires `com.unity.inputsystem`. GamePeek creates virtual devices and injects events via `InputSystem.QueueStateEvent`:
 
 - `Touchscreen` — single and multi-touch from the phone (multi-touch requires Pro)
 - `Accelerometer` — gravity + motion data (Pro)
@@ -184,7 +184,7 @@ Ensure you have `com.unity.inputsystem` in your `Packages/manifest.json`.
 
 Single touch injection is supported via internal Unity reflection (`Input.SimulateTouch(Touch)`). This is best-effort and may break on future Unity versions. Gyroscope and accelerometer injection are **not available** in Legacy mode — use the new Input System for those.
 
-When **Active Input Handling** is set to **Both**, UniPeek injects into the Legacy Input Manager and the new Input System at the same time.
+When **Active Input Handling** is set to **Both**, GamePeek injects into the Legacy Input Manager and the new Input System at the same time.
 
 ---
 
@@ -208,7 +208,7 @@ When **Active Input Handling** is set to **Both**, UniPeek injects into the Lega
 | --- | --- |
 | QR code shows `127.0.0.1` | Machine has no active Wi-Fi / Ethernet. Connect to the network first. |
 | Phone can't find host via mDNS | Make sure both are on the same subnet. Some corporate Wi-Fi isolates clients — try the QR code or Reverse Connection mode instead. |
-| Firewall rule prompt never appears | Click **Reset FW** in the UniPeek toolbar, then Start Streaming again. |
+| Firewall rule prompt never appears | Click **Reset FW** in the GamePeek toolbar, then Start Streaming again. |
 | Game View is black / null capture | Open a **Game** tab in the Editor and make sure it is visible (not behind other panels). In Edit Mode, ensure a camera tagged `MainCamera` exists. |
 | Touch events not registering | Check **Active Input Handling** in Player Settings. Legacy mode uses best-effort reflection. For guaranteed injection, install `com.unity.inputsystem` and set to **Input System Package** or **Both**. |
 | High encode latency | Switch Capture Method to **Async GPU Readback**, lower Quality, or reduce Resolution. |
@@ -219,6 +219,6 @@ When **Active Input Handling** is set to **Both**, UniPeek injects into the Lega
 
 ## License
 
-UniPeek plugin source: **MIT**
+GamePeek plugin source: **MIT**
 QRCoder: **MIT** (<https://github.com/codebude/QRCoder>)
 websocket-sharp: **MIT** (<https://github.com/sta/websocket-sharp>)

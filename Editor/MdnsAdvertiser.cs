@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
@@ -6,7 +6,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace UniPeek
+namespace GamePeek
 {
     public sealed class MdnsAdvertiser : IDisposable
     {
@@ -87,14 +87,14 @@ namespace UniPeek
             }
             catch (Exception e)
             {
-                UniPeekConstants.LogError("[mDNS] Socket error: " + e.Message);
+                GamePeekConstants.LogError("[mDNS] Socket error: " + e.Message);
                 return;
             }
 
             _ = ListenLoop(_cts.Token);
             _ = AnnounceLoop(_cts.Token);
 
-            UniPeekConstants.Log($"[mDNS] Advertising {_machineName}._unipeek._tcp.local on {_localIp}:{_port}");
+            GamePeekConstants.Log($"[mDNS] Advertising {_machineName}._unipeek._tcp.local on {_localIp}:{_port}");
         }
 
         // ─────────────────────────────────────────────
@@ -124,7 +124,7 @@ namespace UniPeek
                 try { client.Close(); client.Dispose(); } catch { }
             }
 
-            UniPeekConstants.Log("[mDNS] Stopped");
+            GamePeekConstants.Log("[mDNS] Stopped");
         }
 
         public void Dispose() => Stop();
@@ -147,7 +147,7 @@ namespace UniPeek
                 }
                 catch (Exception e)
                 {
-                    UniPeekConstants.LogWarning("[mDNS] Announce error: " + e.Message);
+                    GamePeekConstants.LogWarning("[mDNS] Announce error: " + e.Message);
                 }
 
                 try { await Task.Delay(5000, ct); }
@@ -168,7 +168,7 @@ namespace UniPeek
                 catch { break; }
 
                 try { HandleQuery(result.Buffer, result.RemoteEndPoint); }
-                catch (Exception e) { UniPeekConstants.LogWarning("[mDNS] HandleQuery error: " + e.Message); }
+                catch (Exception e) { GamePeekConstants.LogWarning("[mDNS] HandleQuery error: " + e.Message); }
             }
         }
 
@@ -244,7 +244,7 @@ namespace UniPeek
             // ─── ADDITIONAL ───
 
             var txt = new List<byte>();
-            WriteTxt(txt, $"version={UniPeekConstants.Version}");
+            WriteTxt(txt, $"version={GamePeekConstants.Version}");
             WriteResource(buf, instance, DNS_TYPE_TXT, DNS_CLASS_FLUSH, ttl(TXT_TTL), txt);
 
             var srv = new List<byte>();

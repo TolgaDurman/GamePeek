@@ -1,18 +1,18 @@
-using System;
+﻿using System;
 using UnityEditor;
 using UnityEngine;
 using QRCoder;
 
-namespace UniPeek
+namespace GamePeek
 {
     /// <summary>
-    /// Generates QR code <see cref="Texture2D"/> images for the UniPeek Editor window.
+    /// Generates QR code <see cref="Texture2D"/> images for the GamePeek Editor window.
     /// <para>
     /// The payload encoded in the QR is a JSON string that the companion Flutter app
     /// deserialises to discover the WebSocket host and port:
     /// <code>{"ip":"192.168.1.x","port":7777,"mode":"direct","name":"DESKTOP-ABCD"}</code>
     /// </para>
-    /// <para>Requires <c>QRCoder.dll</c> to be present under <c>Assets/Plugins/UniPeek/lib/</c>.</para>
+    /// <para>Requires <c>QRCoder.dll</c> to be present under <c>Assets/Plugins/GamePeek/lib/</c>.</para>
     /// </summary>
     public static class QRCodeGenerator
     {
@@ -23,7 +23,7 @@ namespace UniPeek
         // ── Public API ────────────────────────────────────────────────────────
 
         /// <summary>
-        /// Returns a <see cref="Texture2D"/> QR code encoding the UniPeek connection
+        /// Returns a <see cref="Texture2D"/> QR code encoding the GamePeek connection
         /// payload for the given <paramref name="port"/>.
         /// <para>
         /// The result is cached and regenerated only when the machine's local IP
@@ -33,7 +33,7 @@ namespace UniPeek
         /// <param name="port">WebSocket port to embed in the payload (default 7777).</param>
         /// <param name="pixelsPerModule">Size of each QR dot in pixels (default 10).</param>
         /// <returns>A <see cref="Texture2D"/> containing the QR code, or <c>null</c> on error.</returns>
-        public static Texture2D GetConnectionQR(int port = UniPeekConstants.DefaultPort, int pixelsPerModule = 10)
+        public static Texture2D GetConnectionQR(int port = GamePeekConstants.DefaultPort, int pixelsPerModule = 10)
         {
             string currentIp = GetLocalIPv4();
 
@@ -79,7 +79,7 @@ namespace UniPeek
         {
             if (string.IsNullOrWhiteSpace(payload))
             {
-                UniPeekConstants.LogError("QR payload cannot be null or empty.");
+                GamePeekConstants.LogError("QR payload cannot be null or empty.");
                 return null;
             }
 
@@ -100,7 +100,7 @@ namespace UniPeek
             }
             catch (Exception ex)
             {
-                UniPeekConstants.LogError($"QR generation failed: {ex.Message}");
+                GamePeekConstants.LogError($"QR generation failed: {ex.Message}");
                 return null;
             }
         }
@@ -109,18 +109,18 @@ namespace UniPeek
 
         /// <summary>
         /// Builds the custom-scheme connection payload.
-        /// Format: <c>unipeek://connect?ip=X&amp;port=Y&amp;name=MACHINE</c>
+        /// Format: <c>gamepeek://connect?ip=X&amp;port=Y&amp;name=MACHINE</c>
         /// <para>
-        /// iOS and Android recognise the <c>unipeek://</c> scheme (registered in
-        /// Info.plist / AndroidManifest) and open the UniPeek app directly without
+        /// iOS and Android recognise the <c>gamepeek://</c> scheme (registered in
+        /// Info.plist / AndroidManifest) and open the GamePeek app directly without
         /// routing through a web browser.
         /// </para>
         /// </summary>
         private static string BuildPayload(string ip, int port)
         {
-            string raw  = UnityEditor.EditorPrefs.GetString(UniPeekConstants.PrefEditorName, string.Empty);
+            string raw  = UnityEditor.EditorPrefs.GetString(GamePeekConstants.PrefEditorName, string.Empty);
             string name = Uri.EscapeDataString(string.IsNullOrWhiteSpace(raw) ? Environment.MachineName : raw);
-            return $"unipeek://connect?ip={ip}&port={port}&name={name}";
+            return $"gamepeek://connect?ip={ip}&port={port}&name={name}";
         }
 
         private static void DestroyCachedTexture()
