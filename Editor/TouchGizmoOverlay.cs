@@ -21,6 +21,9 @@ namespace GamePeek
 
         private static readonly Dictionary<int, TouchPoint> _touches = new();
         private static Material _mat;
+        private static Texture2D _touchTexture;
+        private static GUIStyle _fingerLabelStyle;
+        private static TouchGizmoOverlayBehaviour _gameViewBehaviour;
 
         /// <summary>
         /// Whether touch gizmos are drawn on the Game View.
@@ -40,9 +43,10 @@ namespace GamePeek
         {
             GamePeekInput.OnTouchDetailed             += OnTouchDetailed;
             Camera.onPostRender                      += OnBuiltInPostRender;   // Built-in RP
-            RenderPipelineManager.endCameraRendering += OnSrpCameraRendering;  // URP/HDRP — scene view
-            RenderPipelineManager.endFrameRendering  += OnSrpEndFrame;         // URP/HDRP — game view
+            RenderPipelineManager.endFrameRendering  += OnSrpEndFrame;         // URP/HDRP
             EditorApplication.update                 += OnEditorUpdate;
+            EditorApplication.playModeStateChanged   += OnPlayModeStateChanged;
+            EnsureGameViewBehaviour();
         }
 
         // ── Touch tracking ────────────────────────────────────────────────────
@@ -79,30 +83,140 @@ namespace GamePeek
             // In edit mode the Game View doesn't repaint automatically.
             if (!Application.isPlaying)
                 UnityEditorInternal.InternalEditorUtility.RepaintAllViews();
+            else
+                EnsureGameViewBehaviour();
         }
 
         // ── Render callbacks ──────────────────────────────────────────────────
 
-        // Built-in RP: fires per-camera after it renders.
+        // Built-in RP: edit-mode fallback. In Play Mode the hidden OnGUI helper
+        // draws directly into the Game View so the markers are part of the frame.
         private static void OnBuiltInPostRender(Camera cam)
         {
-            if (cam.cameraType != CameraType.Game && cam.cameraType != CameraType.SceneView) return;
+            if (Application.isPlaying) return;
+            if (cam.cameraType != CameraType.Game) return;
             DrawOverlay();
         }
 
-        // URP/HDRP: fires per-camera — handle scene view only.
-        // In URP the game camera renders to an intermediate RT at this point (not the final
-        // game view surface), so game view is handled separately by endFrameRendering.
-        private static void OnSrpCameraRendering(ScriptableRenderContext ctx, Camera cam)
-        {
-            if (cam.cameraType != CameraType.SceneView) return;
-            DrawOverlay();
-        }
-
-        // URP/HDRP: fires once per frame after all cameras and the final screen blit,
-        // so GL commands here land on the game view surface.
+        // URP/HDRP: edit-mode fallback after the final screen blit.
         private static void OnSrpEndFrame(ScriptableRenderContext ctx, Camera[] cameras)
-            => DrawOverlay();
+        {
+            if (Application.isPlaying) return;
+            bool hasGameCamera = false;
+            foreach (var camera in cameras)
+            {
+                if (camera != null && camera.cameraType == CameraType.Game)
+                {
+                    hasGameCamera = true;
+                    break;
+                }
+            }
+
+            if (!hasGameCamera) return;
+            DrawOverlay();
+        }
+
+        private static void OnPlayModeStateChanged(PlayModeStateChange change)
+        {
+            if (change == PlayModeStateChange.EnteredPlayMode)
+                EnsureGameViewBehaviour();
+            else if (change == PlayModeStateChange.ExitingPlayMode ||
+                     change == PlayModeStateChange.EnteredEditMode)
+                DestroyGameViewBehaviour();
+        }
+
+        private static void EnsureGameViewBehaviour()
+        {
+            if (!Application.isPlaying || _gameViewBehaviour != null) return;
+
+            var go = new GameObject("GamePeek Touch Overlay")
+            {
+                hideFlags = HideFlags.HideAndDontSave
+            };
+            _gameViewBehaviour = go.AddComponent<TouchGizmoOverlayBehaviour>();
+            Object.DontDestroyOnLoad(go);
+        }
+
+        private static void DestroyGameViewBehaviour()
+        {
+            if (_gameViewBehaviour == null) return;
+
+            var go = _gameViewBehaviour.gameObject;
+            _gameViewBehaviour = null;
+            if (go != null)
+                Object.DestroyImmediate(go);
+        }
+
+        // ── Game View IMGUI draw ──────────────────────────────────────────────
+
+        private static void DrawGameViewOverlay()
+        {
+            if (!ShowGizmos)         return;
+            if (_touches.Count == 0) return;
+            if (Event.current.type != EventType.Repaint) return;
+
+            EnsureGuiResources();
+
+            const float size = 52f;
+            foreach (var kvp in _touches)
+            {
+                var tp = kvp.Value;
+                float sx = tp.NormalizedPos.x * Screen.width;
+                float sy = tp.NormalizedPos.y * Screen.height;
+                var rect = new Rect(sx - size * 0.5f, sy - size * 0.5f, size, size);
+
+                GUI.DrawTexture(rect, _touchTexture);
+                GUI.Label(rect, Mathf.Clamp(kvp.Key % 10, 0, 9).ToString(), _fingerLabelStyle);
+            }
+        }
+
+        private static void EnsureGuiResources()
+        {
+            if (_touchTexture == null)
+            {
+                const int texSize = 64;
+                const float outerRadius = 30f;
+                const float outlineWidth = 4f;
+                var center = new Vector2((texSize - 1) * 0.5f, (texSize - 1) * 0.5f);
+                _touchTexture = new Texture2D(texSize, texSize, TextureFormat.RGBA32, false)
+                {
+                    hideFlags = HideFlags.HideAndDontSave
+                };
+
+                for (int y = 0; y < texSize; y++)
+                {
+                    for (int x = 0; x < texSize; x++)
+                    {
+                        float d = Vector2.Distance(new Vector2(x, y), center);
+                        Color color = Color.clear;
+                        if (d <= outerRadius)
+                            color = new Color(1f, 0.35f, 0.25f, 0.45f);
+                        if (d <= outerRadius && d >= outerRadius - outlineWidth)
+                            color = new Color(1f, 1f, 1f, 0.90f);
+
+                        _touchTexture.SetPixel(x, y, color);
+                    }
+                }
+
+                _touchTexture.Apply();
+            }
+
+            if (_fingerLabelStyle == null)
+            {
+                _fingerLabelStyle = new GUIStyle(GUI.skin.label)
+                {
+                    alignment = TextAnchor.MiddleCenter,
+                    fontSize = 14,
+                    fontStyle = FontStyle.Bold
+                };
+                _fingerLabelStyle.normal.textColor = new Color(1f, 1f, 1f, 0.95f);
+            }
+        }
+
+        private sealed class TouchGizmoOverlayBehaviour : MonoBehaviour
+        {
+            private void OnGUI() => DrawGameViewOverlay();
+        }
 
         // ── GL draw ───────────────────────────────────────────────────────────
 
