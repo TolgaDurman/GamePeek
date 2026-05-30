@@ -71,6 +71,8 @@ namespace GamePeek
         private MediaStream       _mediaStream;
         private RTCDataChannel    _dataChannel;
         private readonly List<RTCDataChannel> _remoteDataChannels = new();
+        private GamePeekAudioCapture _audioCapture;
+        private bool _createdAudioCapture;
 
         private bool _disposed;
         private bool _mainThreadQueueHooked;
@@ -174,24 +176,7 @@ namespace GamePeek
             _mediaStream.AddTrack(_videoTrack);
             _pc.AddTrack(_videoTrack, _mediaStream);
 
-            // ── Audio track ────────────────────────────────────────────────────
-            try
-            {
-                var listener = UnityEngine.Object.FindObjectOfType<AudioListener>();
-                if (listener != null)
-                {
-                    _audioTrack = new AudioStreamTrack(listener);
-                    _mediaStream.AddTrack(_audioTrack);
-                    _pc.AddTrack(_audioTrack, _mediaStream);
-                    GamePeekConstants.Log("[WebRTC] Audio track added.");
-                }
-                else
-                    GamePeekConstants.LogWarning("[WebRTC] No AudioListener found — audio not streamed.");
-            }
-            catch (Exception ex)
-            {
-                GamePeekConstants.LogWarning($"[WebRTC] Audio track setup failed, continuing without audio: {ex.Message}");
-            }
+            TryStartAudioTrack();
 
             // ── Data channel (input messages from Flutter) ────────────────────
             ApplyBitrateSettings();
@@ -210,6 +195,68 @@ namespace GamePeek
             _negotiationTimeoutCoroutine = EditorCoroutineUtility.StartCoroutineOwnerless(NegotiationTimeoutCoroutine());
             _webRtcUpdateCoroutine = EditorCoroutineUtility.StartCoroutineOwnerless(WebRtcUpdateWrapper());
             _cameraLoopCoroutine = EditorCoroutineUtility.StartCoroutineOwnerless(CameraLoop());
+        }
+
+        private void TryStartAudioTrack()
+        {
+            try
+            {
+                var listener = UnityEngine.Object.FindObjectOfType<AudioListener>();
+                if (listener == null)
+                {
+                    GamePeekConstants.LogWarning("[WebRTC] No AudioListener found — audio not streamed.");
+                    return;
+                }
+
+                _audioCapture = listener.GetComponent<GamePeekAudioCapture>();
+                if (_audioCapture == null)
+                {
+                    _audioCapture = listener.gameObject.AddComponent<GamePeekAudioCapture>();
+                    _audioCapture.hideFlags = HideFlags.HideInInspector;
+                    _createdAudioCapture = true;
+                }
+
+                _audioTrack = new AudioStreamTrack();
+                _audioCapture.AudioRead += OnAudioRead;
+                _mediaStream.AddTrack(_audioTrack);
+                _pc.AddTrack(_audioTrack, _mediaStream);
+                GamePeekConstants.Log("[WebRTC] Audio track added.");
+            }
+            catch (Exception ex)
+            {
+                StopAudioCapture();
+                _audioTrack?.Dispose();
+                _audioTrack = null;
+                GamePeekConstants.LogWarning($"[WebRTC] Audio track setup failed, continuing without audio: {ex.Message}");
+            }
+        }
+
+        private void OnAudioRead(float[] data, int channels, int sampleRate)
+        {
+            var track = _audioTrack;
+            if (track == null || _disposed) return;
+
+            try
+            {
+                track.SetData(data, channels, sampleRate);
+            }
+            catch
+            {
+                // The audio thread can race with WebRTC teardown.
+            }
+        }
+
+        private void StopAudioCapture()
+        {
+            if (_audioCapture != null)
+            {
+                _audioCapture.AudioRead -= OnAudioRead;
+                if (_createdAudioCapture)
+                    UnityEngine.Object.DestroyImmediate(_audioCapture);
+            }
+
+            _audioCapture = null;
+            _createdAudioCapture = false;
         }
 
         /// <summary>
@@ -271,6 +318,8 @@ namespace GamePeek
             foreach (var channel in _remoteDataChannels)
                 channel?.Dispose();
             _remoteDataChannels.Clear();
+
+            StopAudioCapture();
 
             _audioTrack?.Dispose();
             _audioTrack = null;
