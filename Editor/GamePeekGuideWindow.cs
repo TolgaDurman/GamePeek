@@ -15,10 +15,9 @@ namespace GamePeek
         private GUIStyle _codeStyle;
         private bool _stylesInitialized;
 
-        [MenuItem("Window/GamePeek/Guide")]
         public static void Open()
         {
-            var window = GetWindow<GamePeekGuideWindow>(utility: false, title: "GamePeek Guide", focus: true);
+            var window = GetWindow<GamePeekGuideWindow>(utility: true, title: "GamePeek Guide", focus: true);
             window.minSize = new Vector2(420f, 520f);
             window.LoadManual();
         }

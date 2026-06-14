@@ -3,6 +3,15 @@ using UnityEngine;
 
 namespace GamePeek
 {
+    // Fires after every domain reload (including the very first compile after import).
+    // AssetPostprocessor alone cannot catch first-ever imports because the class itself
+    // is part of the package being compiled during that same import cycle.
+    [InitializeOnLoad]
+    internal static class GamePeekWelcomeAutoShow
+    {
+        static GamePeekWelcomeAutoShow() => GamePeekWelcomeWindow.ShowIfNew();
+    }
+
     /// <summary>
     /// Welcome window that opens automatically the first time GamePeek is imported
     /// into a project (or when a new version is detected).
@@ -16,7 +25,6 @@ namespace GamePeek
 
         // ── EditorPrefs key ───────────────────────────────────────────────────
         // Stores the last version for which the welcome window was shown.
-        // Set to the literal string "never" by "Don't show again".
         private const string PrefShownVersion = "GamePeek_WelcomeShownVersion";
 
         // ── State ─────────────────────────────────────────────────────────────
@@ -32,46 +40,17 @@ namespace GamePeek
         private bool     _stylesInitialized;
 
         // ─────────────────────────────────────────────────────────────────────
-        // Auto-show on import
+        // Auto-show on first install / version upgrade
         // ─────────────────────────────────────────────────────────────────────
 
         /// <summary>
-        /// Nested postprocessor detects when the GamePeek package files land in
-        /// the project and schedules the welcome window for the next editor frame.
-        /// </summary>
-        private sealed class ImportDetector : AssetPostprocessor
-        {
-#pragma warning disable IDE0060 // unused parameters required by Unity callback signature
-            private static void OnPostprocessAllAssets(
-                string[] importedAssets,
-                string[] deletedAssets,
-                string[] movedAssets,
-                string[] movedFromAssetPaths)
-#pragma warning restore IDE0060
-            {
-                foreach (var path in importedAssets)
-                {
-                    // Trigger on the constants file — it is always present and
-                    // uniquely identifies a GamePeek import.
-                    if (path.StartsWith("Assets/Plugins/GamePeek/", System.StringComparison.OrdinalIgnoreCase)
-                        && path.EndsWith("GamePeek.cs", System.StringComparison.OrdinalIgnoreCase))
-                    {
-                        ShowIfNew();
-                        return;
-                    }
-                }
-            }
-        }
-
-        /// <summary>
-        /// Opens the welcome window if it has not been shown for the current version.
-        /// Safe to call at any time; deferred via <see cref="EditorApplication.delayCall"/>
-        /// so it always runs after the import pipeline finishes.
+        /// Opens the welcome window once per version. Called by <see cref="GamePeekWelcomeAutoShow"/>
+        /// after every domain reload; the version check makes it a no-op after the first show.
         /// </summary>
         internal static void ShowIfNew()
         {
             var shownVersion = EditorPrefs.GetString(PrefShownVersion, string.Empty);
-            if (shownVersion == GamePeekConstants.Version || shownVersion == "never") return;
+            if (shownVersion == GamePeekConstants.Version) return;
 
             EditorApplication.delayCall += () =>
             {
@@ -202,20 +181,6 @@ namespace GamePeek
                 {
                     Close();
                 }
-            }
-
-            GUILayout.Space(6f);
-
-            // "Don't show again" ──────────────────────────────────────────────
-            using (new EditorGUILayout.HorizontalScope())
-            {
-                GUILayout.FlexibleSpace();
-                if (GUILayout.Button("Don't show on future imports", EditorStyles.miniButton))
-                {
-                    EditorPrefs.SetString(PrefShownVersion, "never");
-                    Close();
-                }
-                GUILayout.FlexibleSpace();
             }
 
             GUILayout.Space(10f);
